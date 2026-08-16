@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MathMate · 教师控制台</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<header>
+  <h1>MathMate 教师控制台</h1>
+  <select id="cls" aria-label="班级"></select>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="author"  aria-selected="true">作业录入</button>
+    <button role="tab" data-tab="board"   aria-selected="false">讲评看板</button>
+    <button role="tab" data-tab="roster"  aria-selected="false">学生与宠物</button>
+  </nav>
+  <span class="sp"></span>
+  <span class="links"><a href="/screen/" target="_blank">大屏 ↗</a><a href="/docs" target="_blank">API ↗</a></span>
+</header>
+
+<!-- ==================== 作业录入 ==================== -->
+<main id="tab-author">
+  <div class="split">
+    <aside class="side">
+      <div class="side-head">
+        <span>作业</span>
+        <button class="mini" id="new-asg">＋ 新建</button>
+      </div>
+      <ul class="asg-list" id="asg-list"></ul>
+    </aside>
+
+    <section class="main" id="editor">
+      <div class="empty">选择左侧的一份作业，或新建一份。</div>
+    </section>
+  </div>
+</main>
+
+<!-- ==================== 讲评看板 ==================== -->
+<main id="tab-board" hidden>
+  <div class="bar">
+    <select id="asg-for-vote" aria-label="用于投票的作业"></select>
+    <button class="primary" id="open">开启投票窗口</button>
+    <button id="close" disabled>关闭窗口</button>
+    <span class="sp"></span>
+    <span class="stat"><b id="done">0</b> <span class="muted">/ <span id="size">0</span> 人已提交</span></span>
+    <span class="muted">参与率 <b id="rate">—</b></span>
+    <span class="pill" id="status">未开启</span>
+  </div>
+  <div id="wrap"><div class="empty">开启投票窗口后，学生在大屏上的选择会实时出现在这里。</div></div>
+  <p class="note">
+    按「人数 × 归因权重」排序：3 个「完全没思路」比 5 个「粗心」更值得占用讲评时间。<br>
+    点任意一行展开学生名单 —— 名单仅教师端可见，大屏公开视图从不显示姓名。
+  </p>
+</main>
+
+<!-- ==================== 学生与宠物 ==================== -->
+<main id="tab-roster" hidden>
+  <div class="bar">
+    <span class="stat"><b id="r-count">0</b> <span class="muted">名学生</span></span>
+    <span class="muted">平均能量 <b id="r-energy">—</b></span>
+    <span class="muted">累计提交 <b id="r-subs">—</b></span>
+    <span class="sp"></span>
+    <button id="r-refresh">刷新</button>
+  </div>
+  <div id="r-silent"></div>
+  <div class="pet-grid" id="pet-grid"></div>
+  <p class="note">
+    按座位号排列，<b>不做能量排行</b> —— 公开的个人排行榜会变成对倒数学生的羞辱，与产品目的相悖。<br>
+    「从未提交」是需要老师私下关注的信号，不是用来公示的。
+  </p>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

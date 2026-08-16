@@ -1,0 +1,136 @@
+{
+  // MathMate 调试配置(VS Code / Cursor 通用)
+  //
+  // 密钥不写在这里 —— 一律通过 envFile 从仓库根目录的 .env 读取,
+  // 该文件已被 .gitignore 排除。首次使用:cp .env.example .env 并填值。
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // ★ 默认入口:F5 直接跑。启动后自动打开教师控制台。
+      // 刻意不加 --reload:reload 会 fork 出子进程跑真正的 app,
+      // 调试器只附着在父进程上,断点会全部失效。要热重载用下一个配置。
+      // 固定 55101,避开本机常被 WSL/portproxy 占住的 8000。
+      "name": "▶ MathMate API(调试，断点可用)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "55101"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "serverReadyAction": {
+        "pattern": "Uvicorn running on (https?://\\S+)",
+        "uriFormat": "%s/teacher/",
+        "action": "openExternally"
+      }
+    },
+    {
+      // 改代码即时生效,但断点不保证命中(见上一条注释)。写前端/调样式时用这个。
+      "name": "↻ MathMate API(热重载，断点不可靠)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "55101", "--reload"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "serverReadyAction": {
+        "pattern": "Uvicorn running on (https?://\\S+)",
+        "uriFormat": "%s/teacher/",
+        "action": "openExternally"
+      }
+    },
+    {
+      // 关掉 LLM,验证 NFR-AV-07 降级路径:照片只留存、知识点只用检索。
+      "name": "▶ MathMate API(强制关闭 LLM，验证降级)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "55101"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "MATHMATE_LLM_ENABLED": "0" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 重建演示数据:40 人班级 + 宠物 + 12 道真题。会清空现有库。
+      "name": "⟳ 重建演示数据(seed)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.seed",
+      "cwd": "${workspaceFolder}/apps/api",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 探活:密钥 / 地址 / 模型名是否可用,顺带打一次真实识别与重排。
+      "name": "🔌 LLM 连通性冒烟测试",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/llm_smoke.py",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 检索标注的留一法自评(不打网络)。
+      "name": "📊 知识点标注评测(检索基线)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.kg_index",
+      "args": ["--eval"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 检索 vs 检索+LLM 重排的对比评测。**会真实调用 LLM、产生费用**,
+      // 所以默认只抽 60 题;改 --n 调整样本量。
+      "name": "📊 知识点标注评测(检索 vs LLM 重排 · 会计费)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/llm_eval_kp.py",
+      "args": ["--n", "60"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 全量回归。测试固定关闭 LLM(见 tests/conftest.py),不会打网络、不会计费。
+      "name": "🧪 全部回归测试",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "🧪 只跑当前测试文件",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v", "${file}"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 重新生成 preview/index.html(知识图谱预览)。
+      "name": "🗺 重建知识图谱预览",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/build_preview.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

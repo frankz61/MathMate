@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MathMate · 课堂大屏</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div>
+      <h1 id="cls-name">MathMate</h1>
+      <div class="sub" id="asg-title">正在连接…</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="counter">
+      <span class="n" id="c-done">0</span>
+      <span class="d">/ <span id="c-total">0</span></span>
+      <span class="lab">位同学已选好</span>
+    </div>
+    <div class="net" id="net"><span class="dot"></span><span id="net-txt">在线</span></div>
+  </header>
+
+  <main class="stage">
+    <!-- 花园 -->
+    <section class="screen" id="s-garden">
+      <div class="garden" id="garden"></div>
+      <div class="garden-hint" id="garden-hint">
+        找到<b>你自己的宠物</b>，点一下 —— 告诉老师今天哪几题你想听讲解
+      </div>
+    </section>
+
+    <!-- 座位确认 -->
+    <section class="screen" id="s-confirm" hidden>
+      <div class="confirm-wrap">
+        <div class="confirm">
+          <div class="pet-art" id="cf-art" style="width:104px;height:104px;margin:0 auto 12px"></div>
+          <div class="q">这是你的宠物吗？请输入你的<b>座位号后两位</b></div>
+          <div class="nick-big" id="cf-nick"></div>
+          <div class="pin"><i id="p0"></i><i id="p1"></i></div>
+          <div class="err" id="cf-err"></div>
+          <div class="keypad" id="keypad"></div>
+          <button class="btn ghost" id="cf-back" style="margin-top:18px">不是我，返回</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 选题 -->
+    <section class="screen" id="s-pick" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="who">
+            <div class="pet-art" id="pk-art"></div>
+            <div>
+              <h2 id="pk-nick"></h2>
+              <div class="tip">想听老师讲哪几题？最多选 <b id="pk-max">3</b> 题</div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn ghost" id="pk-cancel">退出</button>
+        </div>
+        <div class="qwall" id="qwall"></div>
+        <div class="panel-foot">
+          <span class="count">已选 <b id="pk-count">0</b> 题</span>
+          <div class="spacer"></div>
+          <button class="btn" id="pk-none">今天没有想听的</button>
+          <button class="btn primary lg" id="pk-submit" disabled>提交</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 完成 -->
+    <section class="screen" id="s-done" hidden>
+      <div class="done-wrap">
+        <div>
+          <div class="pet-art" id="dn-art"></div>
+          <h2 id="dn-title">收到啦！</h2>
+          <p id="dn-sub"></p>
+          <div class="energy" id="dn-energy" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 无开放窗口 -->
+    <section class="screen" id="s-idle" hidden>
+      <div class="empty">
+        <div>
+          <div class="big" id="idle-big">现在没有进行中的选题</div>
+          <div class="small" id="idle-small">等老师在教师端开启「投票窗口」后，这里会自动亮起。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 归因弹层 -->
+    <div class="sheet-bg" id="sheet" hidden>
+      <div class="sheet">
+        <h3 id="sh-title"></h3>
+        <div class="sub">选一个最接近的原因 —— 老师会据此决定怎么讲</div>
+        <div class="reasons" id="reasons"></div>
+        <button class="btn ghost cancel" id="sh-cancel">取消</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

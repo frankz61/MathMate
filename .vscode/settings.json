@@ -1,0 +1,30 @@
+{
+  // F5 / 测试面板都走项目虚拟环境,避免落到 Anaconda base(里面没有 uvicorn)
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+
+  // 测试面板直接可用:根目录在 apps/api,pytest 会自动读到 tests/conftest.py
+  // (它把 LLM 关掉,所以在编辑器里点运行测试不会打网络、不会计费)
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.cwd": "${workspaceFolder}/apps/api",
+  "python.testing.pytestArgs": ["tests"],
+
+  // 让 from app.xxx import 在编辑器里能跳转
+  "python.analysis.extraPaths": ["${workspaceFolder}/apps/api"],
+  "python.autoComplete.extraPaths": ["${workspaceFolder}/apps/api"],
+
+  // 集成终端里直接 `python -m app.seed` 也能用同一套配置
+  "terminal.integrated.env.windows": { "PYTHONPATH": "${workspaceFolder}/apps/api" },
+  "terminal.integrated.env.linux": { "PYTHONPATH": "${workspaceFolder}/apps/api" },
+  "terminal.integrated.env.osx": { "PYTHONPATH": "${workspaceFolder}/apps/api" },
+
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "search.exclude": {
+    "data/raw": true,
+    "apps/api/app/uploads": true
+  },
+  "[python]": { "editor.rulers": [100] }
+}

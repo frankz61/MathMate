@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "安装依赖",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pip install -r requirements.txt",
+      "options": { "cwd": "${workspaceFolder}/apps/api" },
+      "problemMatcher": []
+    },
+    {
+      "label": "重建演示数据",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m app.seed",
+      "options": { "cwd": "${workspaceFolder}/apps/api" },
+      "problemMatcher": []
+    },
+    {
+      "label": "回归测试",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pytest -q",
+      "options": { "cwd": "${workspaceFolder}/apps/api" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "LLM 冒烟测试",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} scripts/llm_smoke.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "首次初始化(装依赖 + 造数据)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["安装依赖", "重建演示数据"],
+      "problemMatcher": []
+    }
+  ]
+}

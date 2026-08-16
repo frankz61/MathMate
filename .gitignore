@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+apps/api/mathmate.db
+apps/api/mathmate.db-*
+.venv/
+node_modules/
+apps/api/app/uploads/
+
+# 密钥只放本地,模板见 .env.example
+.env
+.env.local
