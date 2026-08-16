@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -38,7 +39,10 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 ALLOWED_IMAGE = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 MIME_BY_EXT = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
                ".webp": "image/webp", ".heic": "image/heic"}
-MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+# 这个上限只管**留存**:发给模型的那一份由 llm.prepare_image 压到 1 MiB 内。
+# 定 24MB 是因为 4800 万像素手机随手一拍就 15–20MB,而原图是识别失败时
+# 教师唯一的降级依据,不该因为大而被拒收。
+MAX_UPLOAD_BYTES = 24 * 1024 * 1024
 # 低于此置信度在校对页标黄(FR-HW-10)
 LOW_CONFIDENCE = 0.55
 # 送给 LLM 重排的候选数。检索 top-8 的章节召回已接近饱和,再多只是给模型添噪。
@@ -135,8 +139,8 @@ def _annotate_batch(problems: list[Problem], grade: str | None,
     try:
         picks = llm.rerank_kp(batch)
     except llm.LLMUnavailable as exc:
-        log.warning("知识点重排降级为检索结果: %s", exc)
-        return {"llm": False, "message": f"知识点重排未生效，已用检索结果：{exc}"}
+        log.warning("知识点重排降级为检索结果(%d 题): %s", len(batch), exc)
+        return {"llm": False, "message": f"知识点重排未生效，已用检索结果：{exc.hint}"}
 
     for idx, pick in picks.items():
         if not 0 <= idx < len(problems):
@@ -342,12 +346,17 @@ async def upload_image(aid: str, file: UploadFile = File(...),
                                   "message": f"仅支持 {'/'.join(sorted(ALLOWED_IMAGE))}"})
     blob = await file.read()
     if len(blob) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, {"code": "IMAGE_TOO_LARGE", "message": "图片超过 12MB"})
+        raise HTTPException(413, {
+            "code": "IMAGE_TOO_LARGE",
+            "message": f"图片超过 {MAX_UPLOAD_BYTES // 1024 // 1024}MB"})
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     name = f"{uuid.uuid4().hex}{ext}"
     with open(os.path.join(UPLOAD_DIR, name), "wb") as f:
         f.write(blob)
+    # 文件名进日志:出问题时能凭 /uploads/<name> 直接找到那张原图复现
+    log.info("上传 %s → %s  %.1fMB  作业=%s(%s)  识别=%s 覆盖=%s",
+             file.filename, name, len(blob) / 1024 / 1024, a.title, a.id, recognize, replace)
 
     imgs = list(a.source_images or [])
     imgs.append({"uri": f"/uploads/{name}", "name": file.filename or name})
@@ -368,12 +377,14 @@ def _recognize_into(db: Session, a: Assignment, blob: bytes, mime: str,
         return {"status": "unavailable",
                 "message": "未配置识别服务（MATHMATE_LLM_API_KEY）："
                            "原图已保存，请对照原图使用「粘贴文本」或手动录入。"}
+    t0 = time.time()
     try:
         items = llm.recognize_problems(blob, mime)
     except llm.LLMUnavailable as exc:
-        log.warning("照片识别失败,降级为仅留存原图: %s", exc)
-        return {"status": "failed",
-                "message": f"识别失败，原图已保存，请手动录入。原因：{exc}"}
+        # 原始细节(网关 JSON、HTTP 码)进日志,界面上给教师能据以行动的一句话
+        log.warning("照片识别失败 %.1fs,降级为仅留存原图: %s", time.time() - t0, exc)
+        return {"status": "failed", "message": exc.hint, "detail": str(exc)[:300]}
+    log.info("照片识别成功 %.1fs,得到 %d 道题", time.time() - t0, len(items))
 
     if replace:
         db.query(Problem).filter(Problem.assignment_id == a.id).delete(synchronize_session=False)

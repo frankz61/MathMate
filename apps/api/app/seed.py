@@ -30,9 +30,15 @@ SURNAMES = "赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕�
 GIVEN = ["子涵", "浩然", "欣怡", "宇轩", "雨萱", "梓豪", "思远", "梦琪", "俊杰", "佳怡",
          "博文", "诗涵", "睿哲", "雅雯", "泽楷", "若曦", "浩宇", "晨曦", "嘉懿", "语彤"]
 
-SPECIES = ["cube", "sphere", "cone", "prism", "cylinder", "pyramid"]
-NICK_A = ["小", "大", "圆", "方", "尖", "亮", "胖", "飞"]
-NICK_B = ["方方", "球球", "尖尖", "棱棱", "筒筒", "塔塔", "角角", "点点"]
+# 宠物物种(PRD FR-PET-01,A8 假设定案:几何精灵 → 十二生肖 → 24 种萌宠)。
+# 必须与 apps/shared/pet.js 的 SPECIES_ZH 及 scripts/fetch_pets.py 的 ROSTER 一致;
+# 24 种让 40 人班里每种最多 2 人重样,比 12 种时的 4 人重样好认得多。
+SPECIES = ["fox", "panda", "penguin", "owl", "dog", "hedgehog",
+           "frog", "turtle", "unicorn", "bear", "chick", "dolphin",
+           "tiger", "octopus", "otter", "seal", "trex", "sauropod",
+           "butterfly", "chipmunk", "pig", "rabbit", "flamingo", "sloth"]
+NICK_A = ["小", "大", "团", "圆", "胖", "跳", "闪", "乖"]
+NICK_B = ["灵灵", "朵朵", "旺旺", "福福", "跳跳", "闹闹", "乖乖", "多多", "淘淘", "安安"]
 
 GRADE = 8
 ROWS, COLS = 6, 7

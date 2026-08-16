@@ -1,0 +1,465 @@
+/* ------------------------------------------------------------------ 宠物形象 v4
+ * 十二生肖萌宠(PRD FR-PET-01,A8 假设定案:几何精灵 → 十二生肖)。
+ * 参数化 SVG,不依赖任何图片资源,大屏(离线/CSP)与教师端共用本文件。
+ *
+ * 视觉语言:Q 版吉祥物 —— 大头圆身 + 生肖特征(耳/角/鬃/冠/尾等)
+ * + 赛璐璐三层阴影 + 轮廓光 + 腮红肚皮;表情与配饰随状态变化,
+ * 细部动画用 SMIL(内嵌,随 SVG 自带)。
+ *
+ * petSVG(species, hue, opts)
+ *   species: rat|ox|tiger|rabbit|dragon|snake|horse|goat|monkey|rooster|dog|pig
+ *   hue:     色相(0-360),驱动整套配色(体色/虹膜/腮红/光环),同种不同色
+ *   opts.idle:  睡眠表情(未开投票,闭眼 + 飘 Z)
+ *   opts.cheer: 庆祝表情(已提交,举手大笑 + 撒彩点)
+ *   opts.level: 等级,≥2 加星徽,≥3 加金冠(能量来源见 FR-PET-05)
+ */
+
+/* 每次调用生成唯一渐变 id,避免同页多只宠物内联 SVG 的 defs 冲突 */
+let _petUid = 0;
+
+/* n 角星路径(以原点为中心,配合 <g transform> 使用) */
+function _starPath(rO, rI, n = 5) {
+  let d = "";
+  for (let i = 0; i < n * 2; i++) {
+    const r = i % 2 === 0 ? rO : rI;
+    const a = -Math.PI / 2 + (i * Math.PI) / n;
+    d += `${i === 0 ? "M" : "L"}${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+  }
+  return d + "Z";
+}
+
+const INK = "#2b304a";
+const MOUTH = "#5b2733";
+const TONGUE = "#ff8fa3";
+const NOSE = "#ff8fa3";
+const GOLD = "#ffd166";
+const GOLD_DARK = "#d99a1e";
+const HORN = "#e8c07a";
+const HORN_DARK = "#b98d4e";
+const COMB = "#ff6b6b";
+const COMB_DARK = "#d94f5c";
+const BEAK = "#ffb02e";
+const BEAK_DARK = "#d98a1e";
+
+/* ---------------- 通用件 ---------------- */
+/* 双层胶囊:粗深色打底 + 主体色覆盖 = 带轮廓的圆头肢体 */
+const capsule = (d, color, out) =>
+  `<path d="${d}" fill="none" stroke="${out}" stroke-width="11.5" stroke-linecap="round"/>` +
+  `<path d="${d}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"/>`;
+const thin = (d, color, w) =>
+  `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+
+/* 圆耳(虎/猴) */
+function roundEars(cx1, cx2, cy, r, fill, deep, inner, innerR) {
+  const one = (cx) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${deep}" stroke-width="2.5"/>
+    <circle cx="${cx}" cy="${cy}" r="${innerR}" fill="${inner}"/>`;
+  return one(cx1) + one(cx2);
+}
+
+/* 吻部椭圆(五官之下) */
+const muzzleUnder = (c, rx, ry, fill, deep) =>
+  `<ellipse cx="60" cy="${c}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${deep}" stroke-width="1.3" stroke-opacity=".22"/>`;
+
+/* 一对鼻孔(吻部之上) */
+const nostrils = (c, dx, rx, ry, deep) =>
+  `<ellipse cx="${60 - dx}" cy="${c - 1}" rx="${rx}" ry="${ry}" fill="${deep}" opacity=".55"/>
+   <ellipse cx="${60 + dx}" cy="${c - 1}" rx="${rx}" ry="${ry}" fill="${deep}" opacity=".55"/>`;
+
+/* 胡须 */
+function whiskers(y, len, deep) {
+  return thin(`M34 ${y - 2} L${34 - len} ${y - 5}`, deep, 1.6) + thin(`M34 ${y + 2} L${34 - len} ${y + 3}`, deep, 1.6) +
+         thin(`M86 ${y - 2} L${86 + len} ${y - 5}`, deep, 1.6) + thin(`M86 ${y + 2} L${86 + len} ${y + 3}`, deep, 1.6);
+}
+
+/* w 形嘴(兔/狗) */
+const wMouth = (y, deep) =>
+  `<path d="M55 ${y} Q57.5 ${y + 4} 60 ${y} Q62.5 ${y + 4} 65 ${y}" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`;
+
+/* 头顶呆毛 */
+const tuft = (deep) =>
+  thin("M56 28 Q54 22 51 19", deep, 2) + thin("M60 27 Q60 20 60 16", deep, 2) + thin("M64 28 Q66 22 69 19", deep, 2);
+
+/* ---------------- 十二生肖 ----------------
+ * build 返回:
+ *   behind     身后层(尾/耳/角/鬃),身体之前
+ *   bodyShape  自定义身体(省略 = 圆身)
+ *   body       身体覆盖层(王字/条纹/鬃毛冠等),五官之前
+ *   faceUnder  吻部底色,五官之前、body 之后
+ *   faceOver   鼻/牙/须/喙/舌等,五官之后
+ *   mouth      常态嘴型(cheer 统一换大笑);undefined = 默认张嘴笑
+ *   limbs      "capsule"(默认小手) | "wings"(鸡翅) | "none"(蛇)
+ *   feetY/feetColor 脚部高度/颜色
+ */
+function buildAnimal(sp, P) {
+  const { main, light, lighter, dark, deep, uid } = P;
+  const B = `fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"`;
+
+  switch (sp) {
+    case "rat": return {
+      behind:
+        thin("M86 88 Q106 88 102 72 Q99 60 110 58", deep, 6) + thin("M86 88 Q106 88 102 72 Q99 60 110 58", main, 3.5) +
+        roundEars(38, 82, 34, 11, `url(#${uid}b)`, deep, lighter, 6),
+      bodyShape: `<path d="M60 26 C42 26 31 44 31 62 C31 82 44 94 60 94 C76 94 89 82 89 62 C89 44 78 26 60 26 Z" ${B}/>`,
+      faceUnder: muzzleUnder(69, 12.5, 8.5, lighter, deep),
+      faceOver: tuft(deep) +
+        `<rect x="55.6" y="67.5" width="3.4" height="4.4" rx="1.2" fill="#fff" stroke="${deep}" stroke-width="1"/>
+         <rect x="61" y="67.5" width="3.4" height="4.4" rx="1.2" fill="#fff" stroke="${deep}" stroke-width="1"/>` +
+        whiskers(70, 9, deep),
+      mouth: `<path d="M55 74 Q60 79 65 74" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`,
+      feetY: 97,
+    };
+
+    case "ox": return {
+      behind:
+        `<path d="M36 40 Q20 32 22 18 Q34 22 42 34 Z" fill="${HORN}" stroke="${HORN_DARK}" stroke-width="1.6" stroke-linejoin="round"/>
+         <path d="M84 40 Q100 32 98 18 Q86 22 78 34 Z" fill="${HORN}" stroke="${HORN_DARK}" stroke-width="1.6" stroke-linejoin="round"/>
+         <ellipse cx="31" cy="46" rx="7" ry="5" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2"/>
+         <ellipse cx="89" cy="46" rx="7" ry="5" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2"/>` + tuft(deep),
+      faceUnder: muzzleUnder(70, 15, 10.5, lighter, deep),
+      faceOver: nostrils(70, 5.5, 2, 2.8, deep) + whiskers(73, 8, deep),
+      mouth: `<path d="M54 76 Q60 81 66 76" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`,
+      feetY: 97,
+    };
+
+    case "tiger": return {
+      behind: roundEars(36, 84, 34, 10.5, `url(#${uid}b)`, deep, lighter, 5.5),
+      body:
+        thin("M55 34 h10", deep, 2.6) + thin("M56.5 39 h7", deep, 2.6) + thin("M55.5 44 h9", deep, 2.6) + thin("M60 30 v17", deep, 2.6) +
+        thin("M30 58 q6 2 9 7", deep, 2.6) + thin("M31 68 q5 1 8 5", deep, 2.6) +
+        thin("M90 58 q-6 2 -9 7", deep, 2.6) + thin("M89 68 q-5 1 -8 5", deep, 2.6) +
+        thin("M45 25 q1 5 0 8", deep, 2.4) + thin("M75 25 q-1 5 0 8", deep, 2.4),
+      faceUnder: muzzleUnder(70, 13, 9, lighter, deep),
+      faceOver:
+        `<path d="M56 63 Q60 60 64 63 Q62 68 60 68 Q58 68 56 63 Z" fill="${NOSE}"/>` +
+        thin("M60 68 v4", deep, 1.6) + whiskers(71, 8, deep),
+      feetY: 97,
+    };
+
+    case "rabbit": return {
+      behind:
+        `<g><path d="M46 34 Q32 8 40 5 Q48 3 53 30 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+           <path d="M45 30 Q37 12 41 9.5 Q45.5 9.5 49 28 Z" fill="${lighter}"/></g>
+         <g><path d="M74 34 Q88 8 80 5 Q72 3 67 30 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+           <path d="M75 30 Q83 12 79 9.5 Q74.5 9.5 71 28 Z" fill="${lighter}"/></g>
+         <circle cx="90" cy="87" r="7" fill="${lighter}" stroke="${deep}" stroke-width="2.5"/>`,
+      faceUnder: muzzleUnder(68, 11, 7.5, lighter, deep),
+      faceOver: `<circle cx="60" cy="62" r="2.4" fill="${NOSE}"/>` + thin("M60 64 v3", deep, 1.6) +
+        `<rect x="56.3" y="71" width="3.1" height="4.8" rx="1.3" fill="#fff" stroke="${deep}" stroke-width="1"/>
+         <rect x="60.6" y="71" width="3.1" height="4.8" rx="1.3" fill="#fff" stroke="${deep}" stroke-width="1"/>` +
+        whiskers(69, 7, deep),
+      mouth: wMouth(69, deep),
+      feetY: 97,
+    };
+
+    case "dragon": return {
+      behind:
+        `<path d="M32 54 Q20 42 28 30 Q36 15 52 13 Q68 11 78 22 Q94 26 90 42 Q98 52 86 54 Z"
+              fill="${dark}" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>` +
+        thin("M40 30 Q27 18 29 7", HORN, 3.4) + thin("M33 19 L26 14", HORN, 2.6) + thin("M37 14 L32 7", HORN, 2.6) +
+        thin("M80 30 Q93 18 91 7", HORN, 3.4) + thin("M87 19 L94 14", HORN, 2.6) + thin("M83 14 L88 7", HORN, 2.6),
+      body:
+        thin("M86 82 Q104 92 108 82", deep, 5) + thin("M86 82 Q104 92 108 82", main, 2.6),
+      faceUnder: muzzleUnder(70, 12.5, 8.5, lighter, deep),
+      faceOver: nostrils(69, 4.5, 1.8, 2.2, deep) +
+        thin("M46 71 Q30 76 23 70", deep, 1.8) + thin("M74 71 Q90 76 97 70", deep, 1.8),
+      mouth: `<path d="M55 75 Q60 79.5 65 75" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`,
+      feetY: 96,
+    };
+
+    case "snake": return {
+      limbs: "none",
+      bodyShape:
+        `<ellipse cx="60" cy="86" rx="27" ry="10.5" fill="${dark}" stroke="${deep}" stroke-width="2.5"/>
+         <ellipse cx="60" cy="76" rx="22" ry="8.5" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5"/>
+         <ellipse cx="60" cy="84" rx="16" ry="5.5" fill="${lighter}" opacity=".85"/>
+         <path d="M85 88 Q99 90 103 83" fill="none" stroke="${deep}" stroke-width="3.5" stroke-linecap="round"/>
+         <circle cx="60" cy="55" r="27" fill="url(#${uid}r)" stroke="${deep}" stroke-width="2.5"/>`,
+      faceOver:
+        `<g>${thin("M60 68 v6", "#ff6b6b", 2)}${thin("M60 74 l-3.4 3", "#ff6b6b", 2)}${thin("M60 74 l3.4 3", "#ff6b6b", 2)}
+           <animate attributeName="opacity" values="1;.2;1" dur="2.2s" repeatCount="indefinite"/></g>`,
+      mouth: `<path d="M54 65 Q60 69.5 66 65" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`,
+      feetY: 0,
+    };
+
+    case "horse": return {
+      behind:
+        `<path d="M44 36 L39 17 Q44 14 49 20 L51 33 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         <path d="M76 36 L81 17 Q76 14 71 20 L69 33 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         ${thin("M88 76 Q106 70 103 52 Q101 44 108 40", deep, 8)}${thin("M88 76 Q106 70 103 52 Q101 44 108 40", main, 5)}
+         ${thin("M105 45 l5 -6", deep, 3)}${thin("M102 43 l2 -8", deep, 3)}`,
+      body:
+        /* 扇形鬃毛:三片叠层,两耳之间下垂额帘 */
+        `<path d="M46 32 Q38 12 52 8 Q54 18 49 26 Q58 10 68 15 Q63 22 56 27 Q66 20 74 24 Q68 30 60 32 Z"
+              fill="${dark}" stroke="${deep}" stroke-width="2" stroke-linejoin="round"/>
+         <path d="M52 30 Q48 18 56 15 Q57 23 53 28 Z" fill="${main}"/>
+         <path d="M60 28 Q58 16 66 15 Q66 23 62 27 Z" fill="${main}"/>
+         <path d="M50 32 Q46 40 50 46 Q56 42 56 34 Z" fill="${dark}" stroke="${deep}" stroke-width="1.6" stroke-linejoin="round"/>`,
+      faceUnder: muzzleUnder(71, 13.5, 9, lighter, deep),
+      faceOver: nostrils(71, 5.5, 2.1, 3, deep),
+      mouth: `<path d="M54 76 Q60 81 66 76" fill="none" stroke="${deep}" stroke-width="2.2" stroke-linecap="round"/>`,
+      feetY: 97,
+    };
+
+    case "goat": return {
+      behind:
+        `<path d="M44 36 Q24 26 16 34 Q26 36 32 45 Q38 50 45 45 Z" fill="${HORN}" stroke="${HORN_DARK}" stroke-width="1.6" stroke-linejoin="round"/>
+         <path d="M76 36 Q96 26 104 34 Q94 36 88 45 Q82 50 75 45 Z" fill="${HORN}" stroke="${HORN_DARK}" stroke-width="1.6" stroke-linejoin="round"/>
+         <ellipse cx="29" cy="49" rx="9" ry="5.5" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2" transform="rotate(-14 29 49)"/>
+         <ellipse cx="91" cy="49" rx="9" ry="5.5" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2" transform="rotate(14 91 49)"/>
+         <circle cx="44" cy="28" r="7" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5"/>
+         <circle cx="60" cy="23" r="8" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5"/>
+         <circle cx="76" cy="28" r="7" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5"/>`,
+      faceUnder: muzzleUnder(69, 12, 8, lighter, deep),
+      faceOver: nostrils(69, 4.5, 1.7, 2.2, deep) +
+        `<path d="M56 78 Q60 88 64 78 Z" fill="${lighter}" stroke="${deep}" stroke-width="1.4" stroke-linejoin="round"/>`,
+      mouth: `<path d="M55 75 Q60 79 65 75" fill="none" stroke="${deep}" stroke-width="2" stroke-linecap="round"/>`,
+      feetY: 97,
+    };
+
+    case "monkey": return {
+      behind:
+        roundEars(31, 89, 57, 9.5, `url(#${uid}b)`, deep, lighter, 5) +
+        thin("M88 82 Q107 86 104 68 Q102 56 91 61", deep, 6) + thin("M88 82 Q107 86 104 68 Q102 56 91 61", main, 3.5) +
+        `<circle cx="91" cy="60" r="3.4" fill="${main}"/>`,
+      body:
+        `<path d="M60 48 C45 48 39 58 41 67 C43 77 52 83 60 79 C68 83 77 77 79 67 C81 58 75 48 60 48 Z"
+              fill="${lighter}" opacity=".95"/>`,
+      faceUnder: `<ellipse cx="60" cy="70" rx="11" ry="8" fill="#fff" opacity=".92"/>`,
+      faceOver: tuft(deep) + nostrils(70, 3.5, 1.5, 1.9, deep),
+      feetY: 97,
+    };
+
+    case "rooster": return {
+      limbs: "wings",
+      behind:
+        `<path d="M84 62 Q106 46 100 26 Q94 40 82 47 Z" fill="${dark}" stroke="${deep}" stroke-width="2" stroke-linejoin="round"/>
+         <path d="M86 68 Q112 58 107 40 Q99 53 84 61 Z" fill="${lighter}" opacity=".9" stroke="${deep}" stroke-width="2" stroke-linejoin="round"/>`,
+      body:
+        `<path d="M48 27 Q45 14 55 16 Q56 7 64 13 Q71 5 72 17 Q80 17 75 27 Z"
+              fill="${COMB}" stroke="${COMB_DARK}" stroke-width="1.6" stroke-linejoin="round"/>`,
+      faceOver:
+        `<path d="M54 62 L66 62 L60 69 Z" fill="${BEAK}" stroke="${BEAK_DARK}" stroke-width="1.2" stroke-linejoin="round"/>
+         <path d="M56.5 69 L63.5 69 L60 74.5 Z" fill="#f59f2e" stroke="${BEAK_DARK}" stroke-width="1.2" stroke-linejoin="round"/>
+         <path d="M57 74 Q53.5 84 59.5 84.5 Q63.5 84.5 62 75 Z" fill="${COMB}" stroke="${COMB_DARK}" stroke-width="1.3" stroke-linejoin="round"/>`,
+      mouth: "",
+      feetColor: [BEAK, BEAK_DARK],
+      feetY: 96,
+    };
+
+    case "dog": return {
+      behind:
+        `<path d="M43 30 Q28 26 26 45 Q25 61 37 61 Q45 58 47 44 Z" fill="${dark}" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         <path d="M77 30 Q92 26 94 45 Q95 61 83 61 Q75 58 73 44 Z" fill="${dark}" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         <g>${thin("M87 76 Q99 64 96 48", deep, 7.5)}${thin("M87 76 Q99 64 96 48", main, 4.5)}
+            <circle cx="96" cy="48" r="3.6" fill="${lighter}"/>
+            <animateTransform attributeName="transform" type="rotate" values="0 87 76; 10 87 76; 0 87 76" dur="1.6s" repeatCount="indefinite"/></g>`,
+      faceUnder: muzzleUnder(71, 13, 9, lighter, deep),
+      faceOver:
+        `<path d="M55 59 Q60 56 65 59 Q64 66 60 66 Q56 66 55 59 Z" fill="${deep}"/>` +
+        thin("M60 66 v3", deep, 1.6) +
+        `<ellipse cx="60" cy="77.5" rx="3.2" ry="4.4" fill="${TONGUE}"/>`,
+      mouth: wMouth(72, deep),
+      feetY: 97,
+    };
+
+    case "pig": return {
+      behind:
+        `<path d="M43 33 Q30 22 28 29 Q27 36 39 40 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         <path d="M77 33 Q90 22 92 29 Q93 36 81 40 Z" fill="url(#${uid}b)" stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"/>
+         <path d="M84 86 Q98 87 96 76 Q94 69 86 72 Q82 75 84 80 Z" fill="none" stroke="${deep}" stroke-width="4" stroke-linecap="round"/>`,
+      bodyShape: `<circle cx="60" cy="60" r="33" fill="url(#${uid}r)" stroke="${deep}" stroke-width="2.5"/>`,
+      faceOver:
+        `<ellipse cx="60" cy="68" rx="10.5" ry="7.5" fill="${dark}" stroke="${deep}" stroke-width="2"/>
+         <ellipse cx="56" cy="68" rx="1.9" ry="2.8" fill="${deep}"/>
+         <ellipse cx="64" cy="68" rx="1.9" ry="2.8" fill="${deep}"/>`,
+      mouth: `<path d="M56 79.5 Q60 83 64 79.5" fill="none" stroke="${deep}" stroke-width="2" stroke-linecap="round"/>`,
+      feetY: 98,
+    };
+
+    default:
+      return buildAnimal("dragon", P);
+  }
+}
+
+/* ---------------- 主入口 ---------------- */
+export function petSVG(species, hue, { idle = false, cheer = false, level = 1 } = {}) {
+  const main = `hsl(${hue} 66% 60%)`;
+  const light = `hsl(${hue} 76% 78%)`;
+  const lighter = `hsl(${hue} 82% 88%)`;
+  const dark = `hsl(${hue} 52% 46%)`;
+  const deep = `hsl(${hue} 46% 34%)`;
+  const iris = `hsl(${hue} 55% 36%)`;
+  const blush = `hsl(${hue} 85% 74% / .6)`;
+  const uid = `pg${++_petUid}`;
+  const S = `stroke="${deep}" stroke-width="2.5" stroke-linejoin="round"`;
+  const A = buildAnimal(species, { main, light, lighter, dark, deep, uid });
+
+  const defs = `<defs>
+    <linearGradient id="${uid}b" x1="0" y1="0" x2=".28" y2="1">
+      <stop offset="0" stop-color="${light}"/><stop offset=".55" stop-color="${main}"/><stop offset="1" stop-color="${dark}"/>
+    </linearGradient>
+    <radialGradient id="${uid}r" cx=".36" cy=".3" r=".95">
+      <stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".3" stop-color="${lighter}"/>
+      <stop offset=".72" stop-color="${main}"/><stop offset="1" stop-color="${dark}"/>
+    </radialGradient>
+    <radialGradient id="${uid}s" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#101426" stop-opacity=".22"/><stop offset=".8" stop-color="#101426" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#101426" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="${uid}a" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="hsl(${hue} 70% 62%)" stop-opacity=".16"/>
+      <stop offset="1" stop-color="hsl(${hue} 70% 62%)" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="${uid}g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#ffb02e"/>
+    </linearGradient>
+  </defs>`;
+
+  const back = `
+    <circle cx="60" cy="62" r="47" fill="url(#${uid}a)"/>
+    <ellipse cx="60" cy="107" rx="31" ry="6.5" fill="url(#${uid}s)"/>`;
+
+  /* 组装次序:光环/落影 → 尾耳角(behind) → 脚 → 身体 → 阴影层 → 生肖覆盖层 →
+     吻部底色 → 肢体 → 五官(眼/眉/嘴/腮红) → 鼻牙须喙(faceOver) → 配饰 */
+  const bodyShape = A.bodyShape ??
+    `<circle cx="60" cy="60" r="32" fill="url(#${uid}r)" ${S}/>`;
+  const shade = species === "snake" ? "" : `
+    <path d="M60 28 A32 32 0 0 1 60 92 A24.5 32 0 0 0 60 28 Z" fill="${dark}" opacity=".22"/>
+    <path d="M31 47 A32 32 0 0 1 46 30" fill="none" stroke="#fff" stroke-width="2.6" opacity=".5" stroke-linecap="round"/>
+    <ellipse cx="60" cy="80" rx="17" ry="10" fill="${light}" opacity=".5"/>`;
+
+  const limbs = A.limbs === "none" ? "" : (() => {
+    if (A.limbs === "wings") {
+      const wing = (tx, rot) => `
+        <g transform="translate(${tx} 68) rotate(${rot})">
+          <ellipse rx="10" ry="6" cx="-4" fill="${lighter}" stroke="${deep}" stroke-width="2"/>
+          <path d="M-12 -2 Q-4 3 4 0" fill="none" stroke="${deep}" stroke-width="1.2" opacity=".4"/>
+          <animateTransform attributeName="transform" type="rotate" additive="sum"
+                            values="0; ${rot < 0 ? 16 : -16}; 0" dur="${cheer ? 0.7 : 2.8}s" repeatCount="indefinite"/>
+        </g>`;
+      return wing(30, 24) + wing(90, -24);
+    }
+    const paw = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="5" fill="${main}" stroke="${deep}" stroke-width="2.5"/>`;
+    return cheer
+      ? capsule("M33 60 Q23 55 19 46", main, deep) + capsule("M87 60 Q97 55 101 46", main, deep) + paw(19, 46) + paw(101, 46)
+      : idle
+        ? capsule("M32 72 Q24 76 22 84", main, deep) + capsule("M88 72 Q96 76 98 84", main, deep) + paw(22, 84) + paw(98, 84)
+        : capsule("M32 70 Q23 73 21 81", main, deep) + capsule("M88 70 Q97 73 99 81", main, deep) + paw(21, 81) + paw(99, 81);
+  })();
+  const feetY = A.feetY || 98;
+  const [footFill, footOut] = A.feetColor ?? [dark, deep];
+  const feet = A.limbs === "none" ? "" : (() => {
+    const foot = (cx) => `
+      <path d="M${cx - 6.5} ${feetY - 1.5} Q${cx - 5.5} ${feetY - 5} ${cx} ${feetY - 5}
+               Q${cx + 5.5} ${feetY - 5} ${cx + 6.5} ${feetY - 1.5} Z"
+            fill="${footFill}" stroke="${footOut}" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M${cx - 2.6} ${feetY - 1.5} q1.2 1.8 2.4 0 M${cx + 0.2} ${feetY - 1.5} q1.3 2 2.6 0"
+            fill="none" stroke="${footOut}" stroke-width="1.3" opacity=".55" stroke-linecap="round"/>`;
+    return foot(49) + foot(71);
+  })();
+
+  /* ---------- 表情 ---------- */
+  const brows = (y, tilt) => `
+    <path d="M40 ${y} Q46 ${y + tilt} 52 ${y}" stroke="${deep}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M68 ${y} Q74 ${y + tilt} 80 ${y}" stroke="${deep}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  const eyesOpen = `
+    <ellipse cx="46" cy="57" rx="6.4" ry="7.6" fill="#fff"/>
+    <ellipse cx="74" cy="57" rx="6.4" ry="7.6" fill="#fff"/>
+    <path d="M40.8 62.4 Q46 64.4 51.2 62.4" fill="none" stroke="#12152a" stroke-width="1.2" opacity=".28" stroke-linecap="round"/>
+    <path d="M68.8 62.4 Q74 64.4 79.2 62.4" fill="none" stroke="#12152a" stroke-width="1.2" opacity=".28" stroke-linecap="round"/>
+    <circle cx="46" cy="57.5" r="4.5" fill="${iris}"/>
+    <circle cx="74" cy="57.5" r="4.5" fill="${iris}"/>
+    <circle cx="46" cy="58" r="2.3" fill="#12152a"/>
+    <circle cx="74" cy="58" r="2.3" fill="#12152a"/>
+    <circle cx="44.2" cy="54.6" r="2.1" fill="#fff"/>
+    <circle cx="72.2" cy="54.6" r="2.1" fill="#fff"/>
+    <circle cx="47.8" cy="59.8" r=".9" fill="#fff" opacity=".85"/>
+    <circle cx="75.8" cy="59.8" r=".9" fill="#fff" opacity=".85"/>
+    <path d="M40.5 51.5 Q46 49.5 51.5 51.5" stroke="${deep}" stroke-width="1.5" opacity=".35" fill="none"/>
+    <path d="M68.5 51.5 Q74 49.5 79.5 51.5" stroke="${deep}" stroke-width="1.5" opacity=".35" fill="none"/>`;
+  const blushes = (op) => `
+    <ellipse cx="35.5" cy="64" rx="5.6" ry="3.4" fill="${blush}" opacity="${op}"/>
+    <ellipse cx="84.5" cy="64" rx="5.6" ry="3.4" fill="${blush}" opacity="${op}"/>
+    <circle cx="34.4" cy="63" r="1" fill="#fff" opacity=".5"/>
+    <circle cx="83.4" cy="63" r="1" fill="#fff" opacity=".5"/>`;
+  const defaultMouth = `
+    <path d="M52.5 65 Q60 76 67.5 65 Q60 70.5 52.5 65 Z" fill="${MOUTH}"/>
+    <path d="M56 69 Q60 73 64 69 Q60 71.5 56 69 Z" fill="${TONGUE}"/>`;
+  const cheerMouth = `
+    <path d="M50 63.5 Q60 82 70 63.5 Q60 68 50 63.5 Z" fill="${MOUTH}"/>
+    <path d="M55 70.5 Q60 76.5 65 70.5 Q60 72.5 55 70.5 Z" fill="${TONGUE}"/>
+    <path d="M57 64 l2.2 3.4 l2.2 -3.4 Z" fill="#fff"/>`;
+
+  let face;
+  if (idle) {
+    face = `
+      <g>${brows(46, -2.5)}
+        <path d="M40 56.5 Q46 61.5 52 56.5" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M68 56.5 Q74 61.5 80 56.5" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M56.5 66.5 Q60 69.5 63.5 66.5" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        ${blushes(".45")}
+        <g stroke="#9aa3c0" stroke-linecap="round" fill="none">
+          <path d="M80 24 h9 l-9 9 h9" stroke-width="2.4">
+            <animate attributeName="opacity" values="0;.9;0" dur="2.8s" repeatCount="indefinite"/></path>
+          <path d="M93 14 h6.5 l-6.5 6.5 h6.5" stroke-width="1.9">
+            <animate attributeName="opacity" values="0;.8;0" dur="2.8s" begin="1.2s" repeatCount="indefinite"/></path>
+        </g>
+      </g>`;
+  } else if (cheer) {
+    face = `
+      <g>${brows(43, -3)}
+        <path d="M39 59 Q46 51 53 59" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M67 59 Q74 51 81 59" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        ${species === "rooster" ? "" : cheerMouth}
+        ${blushes(".8")}
+        <g transform="translate(22 28)"><circle r="4.6" fill="#fff" opacity=".3"/>
+          <g><path d="${_starPath(5.6, 2.2, 4)}" fill="${GOLD}"/>
+             <animateTransform attributeName="transform" type="scale" values="1;1.3;1" dur="1.5s" repeatCount="indefinite"/></g></g>
+        <g transform="translate(96 24)"><circle r="4" fill="#fff" opacity=".3"/>
+          <g><path d="${_starPath(4.6, 1.8, 4)}" fill="${GOLD}"/>
+             <animateTransform attributeName="transform" type="scale" values="1;1.3;1" dur="1.5s" begin=".5s" repeatCount="indefinite"/></g></g>
+        <g transform="translate(91 84)"><circle r="3.6" fill="#fff" opacity=".3"/>
+          <g><path d="${_starPath(4.2, 1.7, 4)}" fill="${GOLD}"/>
+             <animateTransform attributeName="transform" type="scale" values="1;1.3;1" dur="1.5s" begin="1s" repeatCount="indefinite"/></g></g>
+      </g>`;
+  } else {
+    face = `
+      <g>${brows(47, -2)}
+        ${eyesOpen}
+        ${A.mouth === undefined ? defaultMouth : A.mouth}
+        ${blushes(".6")}
+      </g>`;
+  }
+
+  /* ---------- 等级配饰 ---------- */
+  let flair = "";
+  if (level >= 3) {
+    flair = `
+      <g transform="translate(60 11) rotate(-6)">
+        <path d="M-13 8 L-13 -2 L-6 3 L0 -7 L6 3 L13 -2 L13 8 Z"
+              fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1.4" stroke-linejoin="round"/>
+        <rect x="-13" y="6.5" width="26" height="5.5" rx="2.2" fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1.2"/>
+        <circle cx="-13" cy="-3" r="2" fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1"/>
+        <circle cx="0" cy="-8" r="2.2" fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1"/>
+        <circle cx="13" cy="-3" r="2" fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1"/>
+        <circle cx="0" cy="9.2" r="1.8" fill="#ff6b81"/>
+        <circle cx="-6.5" cy="9.2" r="1.2" fill="#7ec8ff"/>
+        <circle cx="6.5" cy="9.2" r="1.2" fill="#7ec8ff"/>
+      </g>`;
+  } else if (level >= 2) {
+    flair = `
+      <g transform="translate(88 25)">
+        <circle r="9" fill="#fff" opacity=".22"/>
+        <path d="${_starPath(7.2, 3.1)}" fill="url(#${uid}g)" stroke="${GOLD_DARK}" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M-3.4 -1.2 L-1.4 -3.6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+      </g>`;
+  }
+
+  const layers = `${A.behind ?? ""}${feet}${bodyShape}${shade}${A.body ?? ""}${A.faceUnder ?? ""}${limbs}${face}${A.faceOver ?? ""}${flair}`;
+  return `<svg viewBox="0 0 120 120" aria-hidden="true">${defs}${back}` +
+    `<g><animateTransform attributeName="transform" type="translate" values="0 0; 0 -1.7; 0 0" keyTimes="0; 0.5; 1" calcMode="spline" keySplines="0.33 0 0.67 1; 0.33 0 0.67 1" dur="3.2s" repeatCount="indefinite"/>` +
+    layers + `</g></svg>`;
+}
+
+/* 供非模块环境兜底(目前两端均为 ES module) */
+if (typeof window !== "undefined") window.petSVG = petSVG;

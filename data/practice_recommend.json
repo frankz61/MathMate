@@ -5,8 +5,9 @@
   "align_method": "基于题目自带 knowledge_point_routes 标签的规则映射(课内体系分支→图谱知识点id),并剔除题源含高中的题目;映射表见 align_practice.py",
   "total_questions_in_dataset": 5000,
   "mapped_questions": 778,
-  "topics_with_practice": 69,
+  "topics_with_practice": 76,
   "max_questions_per_topic": 6,
+  "practice_count_note": "practice_count 为该知识点命中的题↔知识点链接数(同一题映射到多个知识点时分别计数),故 Σpractice_count 会大于等于 mapped_questions",
   "generated": "2026-08-15"
  },
  "topics": {
@@ -1511,7 +1512,7 @@
      "fix": "对顶角无公共边且相等,邻补角有公共边且互补"
     }
    ],
-   "practice_count": 2,
+   "practice_count": 3,
    "questions": [
     {
      "qid": "494346db7cee4017acb304ec3c4172d8",
@@ -1526,6 +1527,20 @@
      "analysis": "因为五条直线相交最多有$$10$$个交点，所以最多可设$$10$$个报亭．  故选$$\\text{B}$$．",
      "difficulty": "1",
      "source": "2005年第16届希望杯初一竞赛初赛第5题4分"
+    },
+    {
+     "qid": "f0e3d3fd27954a229ce48ae7c80f1e32",
+     "problem": "平面内有$$n$$条直线$$(n\\geqslant 2)$$，这$$n$$条直线两两相交，最多可以得到$$a$$个交点，最少可以得到$$b$$个交点，则$$a+b$$的值是．",
+     "options": {
+      "A": "$$n(n-1)$$",
+      "B": "$${{n}^{2}}-n+1$$",
+      "C": "$$\\frac{{{n}^{2}}-n}{2}$$",
+      "D": "$$\\frac{{{n}^{2}}-n+2}{2}$$"
+     },
+     "answer": "D",
+     "analysis": "$$a=1+2+\\cdots +n-1$$  $$=(1+n-1)\\times \\frac{n-1-1+1}{2}$$  $$=\\frac{n(n-1)}{2}$$，$$b=1$$，  $$a+b=\\frac{n(n-1)}{2}+1=\\frac{{{n}^{2}}-n+2}{2}$$．  故选$$\\text{D}$$．",
+     "difficulty": "1",
+     "source": "2018~2019学年山东济南市中区初二上学期期末第28题5分"
     },
     {
      "qid": "d7b513c56a9d4544b6cc57352ca6e46e",
@@ -2207,6 +2222,204 @@
     }
    ]
   },
+  "tp-14-03": {
+   "name": "二次根式的概念与性质",
+   "grade": "八上",
+   "chapter": "实数",
+   "misconceptions": [
+    {
+     "id": "mc-30",
+     "point": "√(a²)=a 恒成立",
+     "fix": "√(a²)=|a|,a<0 时等于 -a"
+    }
+   ],
+   "practice_count": 12,
+   "questions": [
+    {
+     "qid": "d22cc70b85cb44b3a538b90ddeb04ad8",
+     "problem": "把二次根式$$a\\sqrt{-\\frac{1}{a}}$$化为最简二次根式，结果是．",
+     "options": {
+      "A": "$$\\sqrt{-a}$$",
+      "B": "$$-\\sqrt{a}$$",
+      "C": "$$-\\sqrt{-a}$$",
+      "D": "$$\\sqrt{a}$$"
+     },
+     "answer": "C",
+     "analysis": "因为$$a\\textless{}0$$，所以$$a\\sqrt{-\\frac{1}{a}}=-\\sqrt{{{(-a)}^{2}}\\frac{1}{-a}}=-\\sqrt{-a}$$．  故选$$\\text{C}$$．",
+     "difficulty": "1",
+     "source": "1990年第1届希望杯初二竞赛第7题"
+    },
+    {
+     "qid": "301caada2b9045bdb54d8159a1fe68b1",
+     "problem": "代数式$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}$$的最小值是．",
+     "options": {
+      "A": "$$0$$",
+      "B": "$$1+\\sqrt{2}$$",
+      "C": "$$1$$",
+      "D": "不存在的"
+     },
+     "answer": "B",
+     "analysis": "要使代数式$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}$$有意义，需满足条件：  当$$\\begin{cases}x\\geqslant 0    x-1\\geqslant 0    x-2\\geqslant 0    \\end{cases}$$，所以$$x\\geqslant 2$$，  当$$x\\geqslant 2$$时，  即$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}\\geqslant \\sqrt{2}+\\sqrt{2-1}+\\sqrt{2-2}=\\sqrt{2}+1$$，  即$$x=2$$时，原代数式取得最小值$$\\sqrt{2}+1$$．  故选$$\\text{B}$$．",
+     "difficulty": "1",
+     "source": "2001年第12届希望杯初二竞赛第1试第2题"
+    },
+    {
+     "qid": "c76596654af749dfbae0743c97e5b2de",
+     "problem": "若方程$$\\sqrt{x-p}=x$$有两个不相等的实根，则实数$$p$$的取值范围是（ ~ ~）．",
+     "options": {
+      "A": "$$p\\leqslant 0$$",
+      "B": "$$p\\textless{}\\frac{1}{4}$$",
+      "C": "$$0\\leqslant p\\textless{}\\frac{1}{4}$$",
+      "D": "$$p\\geqslant \\frac{1}{4}$$"
+     },
+     "answer": "C",
+     "analysis": "本题可以用特殊值法，排除不合理的选项：  取$$p=-1$$，代入原方程得$$\\sqrt{x+1}=x$$，即$${{x}^{2}}-x-1=0$$，此时，方程有一个负根，于是可排除$$\\text{A}$$，$$\\text{B}$$，  取$$p=1$$，代入原方程得$${{x}^{2}}-x+1=0$$，无解，故排除$$\\text{D}$$，  因此，应选$$\\text{C}$$． <p>原方程可化为：$${{x}^{2}}+x+p=0$$，$$x\\geqslant 0$$，</p>\n<p>∵方程有两个不相等的实根，</p>\n<p>&there4;$$\\Delta =1-4p&gt;0$$，</p>\n<p>解得$$p &nbsp;&lt; &nbsp;\\frac{1}{4}$$，</p>\n<p>设方程两根为$${{x}_{1}}$$，$${{x}_{2}}$$，则必有$${{x}_{1}}\\geqslant 0$$，$${{x}_{2}}\\geqslant 0$$，于是得$$0\\leqslant p &nbsp;&lt; &nbsp;\\frac{1}{4}$$．</p>\n<p>故选$$\\text{C}$$．</p>",
+     "difficulty": "2",
+     "source": "1994年第11届全国初中数学联赛竞赛第6题6分"
+    },
+    {
+     "qid": "b0d913debd544abead1b51bdb70368dc",
+     "problem": "若代数式$$\\sqrt{\\frac{x+2}{{{x}^{2}}}}$$在实数范围内有意义，则$$x$$的取值范围是．",
+     "options": {
+      "A": "$$x\\textgreater2$$",
+      "B": "$$x\\textgreater-2$$",
+      "C": "$$x\\textgreater-2$$且$$x\\ne 0$$",
+      "D": "$$x\\geqslant -2$$且$$x\\ne 0$$"
+     },
+     "answer": "D",
+     "analysis": "∵$$\\sqrt{\\frac{x+2}{{{x}^{2}}}}$$在实数范围内有意义，  ∴$$\\begin{cases}\\dfrac{x+2}{{{x}^{2}}}\\geqslant 0    {{x}^{2}}\\ne 0   \\end{cases}$$，  ∴$$x\\geqslant -2$$且$$x\\ne 0$$．  故选$$\\text{D}$$．",
+     "difficulty": "1",
+     "source": "2019年浙江杭州拱墅区杭州市文澜中学初二竞赛第1题3分"
+    },
+    {
+     "qid": "8aac50a751148307015114dbd56403bd",
+     "problem": "如果$${{a}^{2}}={{b}^{4}}\\ne 0$$，则$$\\frac{a}{{{b}^{2}}}$$的值（~ ）．",
+     "options": {
+      "A": "$$1$$",
+      "B": "$$0$$",
+      "C": "$$-1$$",
+      "D": "$$1$$或$$-1$$"
+     },
+     "answer": "D",
+     "analysis": "$${{a}^{2}}={{b}^{4}}\\ne 0$$，则$$a={{b}^{2}}$$或$$-a={{b}^{2}}$$，∴$$\\frac{a}{{{b}^{2}}}=1$$或$$-1$$．",
+     "difficulty": "2",
+     "source": "2015年第26届全国希望杯初二竞赛复赛第4题"
+    },
+    {
+     "qid": "4219a6c31c754585a01202ae92d7ee93",
+     "problem": "若式子$$\\frac{\\sqrt{m+1}}{\\textbar m-3\\textbar}$$有意义，则实数$$m$$的取值范围是．",
+     "options": {
+      "A": "$$m\\geqslant -1$$",
+      "B": "$$m\\textgreater-1$$",
+      "C": "$$m\\textgreater-1$$且$$m\\ne 3$$",
+      "D": "$$m\\geqslant -1$$且$$m\\ne 3$$"
+     },
+     "answer": "D",
+     "analysis": "要使式子$$\\frac{\\sqrt{m+1}}{\\textbar m-3\\textbar}$$有意义，  ∴$$m+1\\geqslant 0$$且$$m-3\\ne 0$$，  ∴$$m\\geqslant -1$$且$$m\\ne 3$$．  选$$\\text{D}$$．",
+     "difficulty": "0",
+     "source": "2019年广东惠州惠城区光正实验学校初二竞赛第1题3分"
+    }
+   ]
+  },
+  "tp-14-04": {
+   "name": "二次根式的运算",
+   "grade": "八上",
+   "chapter": "实数",
+   "misconceptions": [
+    {
+     "id": "mc-31",
+     "point": "√2+√3=√5",
+     "fix": "只有被开方数相同的二次根式才能合并,类似合并同类项"
+    }
+   ],
+   "practice_count": 25,
+   "questions": [
+    {
+     "qid": "301caada2b9045bdb54d8159a1fe68b1",
+     "problem": "代数式$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}$$的最小值是．",
+     "options": {
+      "A": "$$0$$",
+      "B": "$$1+\\sqrt{2}$$",
+      "C": "$$1$$",
+      "D": "不存在的"
+     },
+     "answer": "B",
+     "analysis": "要使代数式$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}$$有意义，需满足条件：  当$$\\begin{cases}x\\geqslant 0    x-1\\geqslant 0    x-2\\geqslant 0    \\end{cases}$$，所以$$x\\geqslant 2$$，  当$$x\\geqslant 2$$时，  即$$\\sqrt{x}+\\sqrt{x-1}+\\sqrt{x-2}\\geqslant \\sqrt{2}+\\sqrt{2-1}+\\sqrt{2-2}=\\sqrt{2}+1$$，  即$$x=2$$时，原代数式取得最小值$$\\sqrt{2}+1$$．  故选$$\\text{B}$$．",
+     "difficulty": "1",
+     "source": "2001年第12届希望杯初二竞赛第1试第2题"
+    },
+    {
+     "qid": "15de66d28b5b44a387a188569dcda7bf",
+     "problem": "化简：$$\\sqrt{4+\\sqrt{7}}-\\sqrt{4-\\sqrt{7}}=$$．",
+     "options": {
+      "A": "$$1$$",
+      "B": "$$\\sqrt{2}$$",
+      "C": "$$\\sqrt{3}$$",
+      "D": "$$2$$"
+     },
+     "answer": "B",
+     "analysis": "设$$a=\\sqrt{4+\\sqrt{7}}-\\sqrt{4-\\sqrt{7}}$$，  则$${{a}^{2}}=4+\\sqrt{7}-2\\sqrt{(4+\\sqrt{7})(4-\\sqrt{7})}+4-\\sqrt{7}=2$$，  于是$$\\sqrt{4+\\sqrt{7}}-\\sqrt{4-\\sqrt{7}}=$\\sqrt{2}$$$．",
+     "difficulty": "1",
+     "source": "2012年第23届全国希望杯初二竞赛复赛第4题4分"
+    },
+    {
+     "qid": "4910951259f34365a515acf7d3fef2e0",
+     "problem": "计算：$${{(\\sqrt{7})}^{2}}-\\sqrt{{{(-4)}^{2}}}=$$．",
+     "options": {
+      "A": "$$3$$",
+      "B": "$$11$$",
+      "C": "$$-3$$",
+      "D": "$$-11$$"
+     },
+     "answer": "A",
+     "analysis": "$${{(\\sqrt{7})}^{2}}-\\sqrt{{{(-4)}^{2}}}=7-4=3$$．  故选$$\\text{A}$$．",
+     "difficulty": "1",
+     "source": "2019年广东惠州惠城区光正实验学校初二竞赛第3题3分"
+    },
+    {
+     "qid": "4be7755dcf2948c68aa88eff1f81099b",
+     "problem": "已知$$\\sqrt{7}=a$$，$$\\sqrt{70}=b$$，则$$\\sqrt{4.9}=$$．",
+     "options": {
+      "A": "$$\\frac{a+b}{10}$$",
+      "B": "$$\\frac{b-a}{10}$$",
+      "C": "$$\\frac{b}{a}$$",
+      "D": "$$\\frac{ab}{10}$$"
+     },
+     "answer": "D",
+     "analysis": "$$\\sqrt{4.9}=\\sqrt{\\frac{49}{10}}=\\frac{\\sqrt{490}}{10}=\\frac{\\sqrt{7}\\cdot \\sqrt{70}}{10}=\\frac{ab}{10}$$．",
+     "difficulty": "0",
+     "source": "2018~2019学年5月天津南开区天津市南开翔宇学校初二下学期月考第5题"
+    },
+    {
+     "qid": "0977ee96ed5d45b681b5aefd11be7bcd",
+     "problem": "化简代数式$$\\sqrt{3+2\\sqrt{2}}+\\sqrt{3-2\\sqrt{2}}$$的结果是．",
+     "options": {
+      "A": "$$3$$",
+      "B": "$$1+\\sqrt{2}$$",
+      "C": "$$2+\\sqrt{2}$$",
+      "D": "$$2\\sqrt{2}$$"
+     },
+     "answer": "D",
+     "analysis": "设$$y=\\sqrt{3+2\\sqrt{2}}+\\sqrt{3-2\\sqrt{2}}$$，$$y\\textgreater0$$，  所以$${{y}^{2}}=3+2\\sqrt{2}+2\\sqrt{3+2\\sqrt{2}}\\cdot \\sqrt{3-2\\sqrt{2}}+3-2\\sqrt{2}$$  $$=6+2\\sqrt{9-8}$$  $$=8$$，  所以$$y=2\\sqrt{2}$$．  故选$$\\text{D}$$．",
+     "difficulty": "1",
+     "source": "2019~2020学年四川眉山东坡区眉山东辰国际学校初三上学期期中第33题5分"
+    },
+    {
+     "qid": "c83f9434014442bdad886bf1fee57e1d",
+     "problem": "化简代数式$$\\sqrt{3+2\\sqrt{2}}+\\sqrt{3-2\\sqrt{2}}$$的结果是．",
+     "options": {
+      "A": "$$3$$",
+      "B": "$$1+\\sqrt{2}$$",
+      "C": "$$2+\\sqrt{2}$$",
+      "D": "$$2\\sqrt{2}$$"
+     },
+     "answer": "D",
+     "analysis": "设$$y=\\sqrt{3+2\\sqrt{2}}+\\sqrt{3-2\\sqrt{2}}$$，$$y\\textgreater0$$，  所以$${{y}^{2}}=3+2\\sqrt{2}+2\\sqrt{3+2\\sqrt{2}}\\cdot \\sqrt{3-2\\sqrt{2}}+3-2\\sqrt{2}$$  $$=6+2\\sqrt{9-8}$$  $$=8$$，  所以$$y=2\\sqrt{2}$$．  故选$$\\text{D}$$．",
+     "difficulty": "1",
+     "source": "2001年第12届希望杯初二竞赛第2试第1题"
+    }
+   ]
+  },
   "tp-15-02": {
    "name": "平面直角坐标系",
    "grade": "八上",
@@ -2602,7 +2815,7 @@
    "grade": "八上",
    "chapter": "二元一次方程组",
    "misconceptions": [],
-   "practice_count": 7,
+   "practice_count": 9,
    "questions": [
     {
      "qid": "8aac50a74e442d83014e4cd2ab8e1d9b",
@@ -2647,6 +2860,20 @@
      "source": "2016年第33届全国全国初中数学联赛竞赛第2题7分"
     },
     {
+     "qid": "922cbbffd2f7479b8ca185d10af91084",
+     "problem": "若关于$$x$$，$$y$$的方程组$$\\begin{cases}x+ay+1=0    bx-2y+a=0 \\end{cases}$$没有实数解，则．",
+     "options": {
+      "A": "$$ab=-2$$",
+      "B": "$$ab=-2$$且$$a\\ne 1$$",
+      "C": "$$ab\\ne -2$$",
+      "D": "$$ab=-2$$且$$a\\ne 2$$"
+     },
+     "answer": "A",
+     "analysis": "整理方程得$$\\begin{cases}bx+aby+b=0    bx-2y+a=0    \\end{cases}$$，  则$$\\left( ab+2 \\right)y=a-b$$，  要使方程组没有实数解，则$$\\begin{cases}ab=-2    a-b\\ne 0    \\end{cases}$$，  ∵$$ab=-2\\textless{}0$$，  ∴$$a$$不可能等于$$b$$，  ∴满足$$ab=-2$$即可．",
+     "difficulty": "1",
+     "source": "2011年第22届全国希望杯初二竞赛初赛第9题4分"
+    },
+    {
      "qid": "481314bbebd64df6be25b816a47f25c2",
      "problem": "关于$$x$$，$$y$$的方程组$$\\begin{cases}x+ay+1=0    bx-2y+1=0 \\end{cases}$$有无数组解，则$$a$$，$$b$$的值为．",
      "options": {
@@ -2673,20 +2900,6 @@
      "analysis": "方程组有无数组解于是有$$\\frac{{{a}_{1}}}{{{a}_{2}}}=\\frac{{{b}_{1}}}{{{b}_{2}}}=\\frac{{{c}_{1}}}{{{c}_{2}}}$$，  于是$$\\frac{1}{b}=\\frac{a}{-2}=\\frac{1}{1}$$，  ∴$$a=-2$$，$$b=1$$．",
      "difficulty": "1",
      "source": "初一下学期其它第18题"
-    },
-    {
-     "qid": "d6ea348bbe464519806dd61d962020ba",
-     "problem": "已知关于$$x$$，$$y$$的方程组$$\\begin{cases}mx+ny=7    2mx-3ny=4    \\end{cases}$$的解为$$\\begin{cases}x=1    y=2    \\end{cases}$$，则$$m$$，$$n$$的值是．",
-     "options": {
-      "A": "$$\\begin{cases}m=5    n=1    \\end{cases}$$",
-      "B": "$$\\begin{cases}m=1    n=5    \\end{cases}$$",
-      "C": "$$\\begin{cases}m=3    n=2    \\end{cases}$$",
-      "D": "$$\\begin{cases}m=2    n=3    \\end{cases}$$"
-     },
-     "answer": "A",
-     "analysis": "关于$$x$$，$$y$$的方程组$$\\begin{cases}mx+ny=7    2mx-3ny=4    \\end{cases}$$的解为$$\\begin{cases}x=1    y=2    \\end{cases}$$，  ∴$$\\begin{cases}m+2n=7    2m-6n=4    \\end{cases}$$，  解得$$\\begin{cases}m=5    n=1    \\end{cases}$$．  故选$$\\text{A}$$．",
-     "difficulty": "1",
-     "source": "2020年湖南长沙天心区湘郡培粹实验中学初一竞赛初赛（9月）第4题4分"
     }
    ]
   },
@@ -2695,7 +2908,7 @@
    "grade": "八上",
    "chapter": "二元一次方程组",
    "misconceptions": [],
-   "practice_count": 5,
+   "practice_count": 13,
    "questions": [
     {
      "qid": "cf8ccd2e6ebf4a6084a57d4879434f24",
@@ -2712,6 +2925,20 @@
      "source": "1998年第9届希望杯初一竞赛第6题"
     },
     {
+     "qid": "bfdb2b2df4164804837e1d1e09f10600",
+     "problem": "在直角坐标系中，横纵坐标都是整数的点称为整点，设$$k$$ 为整数，当直线$$y=x-3$$ 与$$y=kx+k$$ 的交点为整数时，$$k$$ 的值可以取．",
+     "options": {
+      "A": "$$2$$ 个",
+      "B": "$$4$$ 个",
+      "C": "$$6$$ 个",
+      "D": "$$8$$ 个"
+     },
+     "answer": "C",
+     "analysis": "由题意得：$$\\begin{cases}y=kx+k    y=x-3   \\end{cases}$$ ，  解得：$$\\begin{cases}x=\\dfrac{k+3}{1-k}    y=\\dfrac{4k}{1-k}   \\end{cases}$$ ，  ∴$$\\begin{cases}x=-1+\\dfrac{4}{1-k}    y=-4+\\dfrac{4}{1-k}   \\end{cases}$$ ，  ∵交点为整数，  ∴$$k$$ 可取的整数解有$$0$$ ，$$2$$ ，$$3$$ ，$$5$$ ，$$-1$$ ，$$-3$$ 共$$6$$ 个．  故选$$\\text{C}$$ ． <p>由题意可知，$$x-3=k\\left( x+1 \\right)$$，</p>\n<p>所以$$k=\\frac{x-3}{x+1}=1-\\frac{4}{x+1}$$，</p>\n<p>但$$k$$为整数，</p>\n<p>于是$$x+1=\\pm 1$$，$$\\pm 2$$，$$\\pm 4$$，$$k$$可取$$6$$个值，</p>\n<p>故选$$\\text{C}$$．</p>",
+     "difficulty": "2",
+     "source": "2005年第22届全国初中数学联赛竞赛初赛第5题7分"
+    },
+    {
      "qid": "d2c5afff897a4a6c92349a1337680fba",
      "problem": "若对于$$\\pm 3$$以外的一切实数$$x$$，等式$$\\frac{m}{x+3}-\\frac{n}{x-3}=\\frac{8x}{{{x}^{2}}-9}$$均成立，则$$mn$$的值是．",
      "options": {
@@ -2726,6 +2953,34 @@
      "source": "1998年第9届希望杯初二竞赛第2试第7题"
     },
     {
+     "qid": "258acd0ce78d4125ab22c0739b27d907",
+     "problem": "已知$$y=a{{x}^{7}}+b{{x}^{5}}+c{{x}^{3}}+dx+e$$，其中$$a,b,c,d,e$$为常数，当$$x=2$$时，$$y=23$$；当$$x=-2$$时，$$y=-35$$，那么$$e$$的值是．",
+     "options": {
+      "A": "$$6$$",
+      "B": "$$-6$$",
+      "C": "$$12$$",
+      "D": "$$-12$$"
+     },
+     "answer": "B",
+     "analysis": "由题设知，当$$x=2$$时，  $$23={{2}^{7}}a+{{2}^{5}}b+{{2}^{3}}c+2d+e$$  当$$x=-2$$时，  $$-35={{\\left( -2 \\right)}^{7}}a+{{\\left( -2 \\right)}^{5}}b+{{\\left( -2 \\right)}^{3}}c+\\left( -2 \\right)d+e$$  由①+②，则得$$2e=-12$$，所以$$e=-6$$．",
+     "difficulty": "2",
+     "source": "1994年第5届希望杯初二竞赛第2题"
+    },
+    {
+     "qid": "e1e54dfc08aa4357aa3bec838f6c59b5",
+     "problem": "方程组$$\\begin{cases}\\left\\textbar{} x \\right\\textbar+y=12    x+\\left\\textbar{} y \\right\\textbar=6   \\end{cases}$$的解的个数为．",
+     "options": {
+      "A": "$$1$$",
+      "B": "$$2$$",
+      "C": "$$3$$",
+      "D": "$$4$$"
+     },
+     "answer": "A",
+     "analysis": "①当$$x\\textgreater0$$，$$y\\textgreater0$$时，原方程组为$$\\begin{cases}x+y=12    x+y=6   \\end{cases}$$显然无解；  ②当$$x ~\\textless{} ~0$$，$$y\\textgreater0$$时，原方程组为$$\\begin{cases}-x+y=12    x+y=6   \\end{cases}$$，解得$$\\begin{cases}x=-3    y=9   \\end{cases}$$；  ③当$$x\\textgreater0$$，$$y ~\\textless{} ~0$$时，原方程组为$$\\begin{cases}x+y=12    x-y=6   \\end{cases}$$，解得$$\\begin{cases}x=9    y=3   \\end{cases}$$，舍去；  ④当$$x ~\\textless{} ~0$$，$$y ~\\textless{} ~0$$时，原方程组为$$\\begin{cases}-x+y=12    x-y=6   \\end{cases}$$显然无解；  综上，只有$$1$$组解．故选$$\\text{A}$$． <p>若$$x\\geqslant 0$$，则$$\\begin{cases}x+y=12 \\\\ x+\\left| y \\right|=6 \\\\\\end{cases}$$，于是$$\\left| y \\right|-y=-6$$，显然不可能．</p>\n<p>若$$x &nbsp;&lt; &nbsp;0$$，则$$\\begin{cases}-x+y=12 \\\\ x+\\left| y \\right|=6 \\\\\\end{cases}$$，</p>\n<p>于是$$\\left| y \\right|+y=18$$，解得$$y=9$$，进而求得$$x=-3$$．</p>\n<p>所以，原方程组的解为$$\\begin{cases}x=-3 \\\\ y=9 \\\\\\end{cases}$$，只有$$1$$个解．</p>\n<p>故选$$\\text{A}$$．</p>",
+     "difficulty": "2",
+     "source": "2020~2021学年北京北京汇文中学初一上学期期末第10题2分"
+    },
+    {
      "qid": "5b629433ed0841cdb3e5d03cbe318480",
      "problem": "已知$$a$$为实数，关于$$x$$，$$y$$的方程组$$\\left { \\begin{array}{*{35}{l}} ax+2y=24    2x+2y=a   \\end{array} \\right.$$有整数解，则$$a$$的个数为（~ ）",
      "options": {
@@ -2738,34 +2993,6 @@
      "analysis": "由$$\\left { \\begin{array}{*{35}{l}} ax+2y=24    2x+2y=a   \\end{array} \\right.$$得$$\\left( a-2 \\right)x=24-a$$，∴$$x=\\frac{24-a}{a-2}=-1+\\frac{22}{a-2}$$；  由$$2x+2y=a$$，可知$$a$$必为偶数，又$$-1+\\frac{22}{a-2}$$为整数，所以$$a=0,4,24,-20$$",
      "difficulty": "1",
      "source": "2016年全国全国初中数学联赛初一竞赛"
-    },
-    {
-     "qid": "607f0eccb7594bba808621281385dccf",
-     "problem": "在一家水果店，小明买了$$1$$斤苹果，$$4$$斤西瓜，$$2$$斤橙子，$$1$$斤葡萄，共付$$27.6$$元；小惠买了$$2$$斤苹果，$$6$$斤西瓜，$$2$$斤橙子，$$2$$斤葡萄，共付$$32.2$$元，则买$$1$$斤西瓜和$$1$$斤橙子需付（~ ）．",
-     "options": {
-      "A": "$$16$$元",
-      "B": "$$14.8$$元",
-      "C": "$$11.5$$元",
-      "D": "$$10.7$$元"
-     },
-     "answer": "C",
-     "analysis": "设$$1$$斤苹果$$x$$元，$$1$$斤西瓜$$y$$元，$$1$$斤橙子$$z$$元，$$1$$斤葡萄$$w$$元．  由题意，得$$\\left { \\begin{matrix}x+4y+2z+w=27.6\\&①    2x+6y+2z+2w=32.2 \\&②  \\end{matrix} \\right.\\begin{matrix}     \\end{matrix}$$，  $$2\\times $$①$$-$$②，得$$2y+2z=23$$，  ∴$$y+z=11.5$$．  答：买$$1$$斤西瓜和$$1$$斤橙子需付$$11.5$$元．",
-     "difficulty": "1",
-     "source": "2016年第27届全国希望杯初一竞赛复赛第3题4分"
-    },
-    {
-     "qid": "45599f2290fc4b9fa45cd6d82c88338d",
-     "problem": "$${{x}_{1}}$$、$${{x}_{2}}$$、$${{x}_{3}}$$、$${{x}_{4}}$$、$${{x}_{5}}$$满足方程组$$\\begin{cases}{{x}_{1}}+{{x}_{2}}+{{x}_{3}}={{a}_{1}}    {{x}_{2}}+{{x}_{3}}+{{x}_{4}}={{a}_{2}}    {{x}_{3}}+{{x}_{4}}+{{x}_{5}}={{a}_{3}}    {{x}_{4}}+{{x}_{5}}+{{x}_{1}}={{a}_{4}}    {{x}_{5}}+{{x}_{1}}+{{x}_{2}}={{a}_{5}} \\end{cases}$$，  其中$${{a}_{1}}$$、$${{a}_{2}}$$、$${{a}_{3}}$$、$${{a}_{4}}$$、$${{a}_{5}}$$是常数，且$${{a}_{1}}\\textgreater{{a}_{2}}\\textgreater{{a}_{3}}\\textgreater{{a}_{4}}\\textgreater{{a}_{5}}$$，则$${{x}_{1}}$$、$${{x}_{2}}$$、$${{x}_{3}}$$、$${{x}_{4}}$$、$${{x}_{5}}$$的大小顺序是．",
-     "options": {
-      "A": "$${{x}_{1}}\\textgreater{{x}_{2}}\\textgreater{{x}_{3}}\\textgreater{{x}_{4}}\\textgreater{{x}_{5}}$$",
-      "B": "$${{x}_{4}}\\textgreater{{x}_{2}}\\textgreater{{x}_{1}}\\textgreater{{x}_{3}}\\textgreater{{x}_{5}}$$",
-      "C": "$${{x}_{3}}\\textgreater{{x}_{1}}\\textgreater{{x}_{4}}\\textgreater{{x}_{2}}\\textgreater{{x}_{5}}$$",
-      "D": "$${{x}_{5}}\\textgreater{{x}_{3}}\\textgreater{{x}_{1}}\\textgreater{{x}_{4}}\\textgreater{{x}_{2}}$$"
-     },
-     "answer": "C",
-     "analysis": "\\textbf{（知识点：解多元一次方程组）}  给定方程组中的方程按顺序两两相减分别得：  $${{x}_{1}}-{{x}_{4}}={{a}_{1}}-{{a}_{2}}$$，$${{x}_{2}}-{{x}_{5}}={{a}_{2}}-{{a}_{3}}$$，$${{x}_{3}}-{{x}_{1}}={{a}_{3}}-{{a}_{4}}$$，$${{x}_{4}}-{{x}_{2}}={{a}_{4}}-{{a}_{5}}$$，  由于$${{a}_{1}}\\textgreater{{a}_{2}}\\textgreater{{a}_{3}}\\textgreater{{a}_{4}}\\textgreater{{a}_{5}}$$，有$${{x}_{1}}\\textgreater{{x}_{4}}$$，$${{x}_{2}}\\textgreater{{x}_{5}}$$，$${{x}_{3}}\\textgreater{{x}_{1}}$$，$${{x}_{4}}\\textgreater{{x}_{2}}$$，因此$${{x}_{3}}\\textgreater{{x}_{1}}\\textgreater{{x}_{4}}\\textgreater{{x}_{2}}\\textgreater{{x}_{5}}$$．  所以选$$\\text{C}$$．",
-     "difficulty": "2",
-     "source": "1993年第10届全国初中数学联赛竞赛第4题"
     }
    ]
   },
@@ -2952,6 +3179,85 @@
      "analysis": "设该队胜$$x$$场，平$$y$$场，负$$z$$场，$$x$$，$$y$$，$$z$$都为整数，且$$0\\leqslant x,y,z\\leqslant 15$$，  则$$\\left { \\begin{matrix}x+y+z=15    3x+y=33   \\end{matrix} \\right.$$，  解得$$x=11-\\frac{y}{3}$$，则$$y=0$$，$$3$$，$$6$$．",
      "difficulty": "2",
      "source": "初一其它"
+    }
+   ]
+  },
+  "tp-17-06": {
+   "name": "二元一次方程与一次函数",
+   "grade": "八上",
+   "chapter": "二元一次方程组",
+   "misconceptions": [],
+   "practice_count": 5,
+   "questions": [
+    {
+     "qid": "8aac50a7511483070151148e530e0062",
+     "problem": "若一次函数$$y=x+5$$的图象经过点$$P(a,b)$$和点$$Q(c,d)$$，则$$ad+bc-ac-bd$$的值是（~ ）．",
+     "options": {
+      "A": "$$9$$",
+      "B": "$$16$$",
+      "C": "$$25$$",
+      "D": "$$-25$$"
+     },
+     "answer": "D",
+     "analysis": "∵一次函数$$y=x+5$$的图象经过点$$P(a,b)$$和点$$Q(c,d)$$，  ∴$$b=a+5$$，$$d=c+5$$．  ∴$$b-a=5$$，$$d-c=5$$．  ∴$$ad+bc-ac-bd$$  $$=a(d-c)-b(d-c)$$  $$=(a-b)(d-c)$$  $$=-25$$．",
+     "difficulty": "2",
+     "source": "2015年第26届全国希望杯初二竞赛初赛第2题"
+    },
+    {
+     "qid": "bfdb2b2df4164804837e1d1e09f10600",
+     "problem": "在直角坐标系中，横纵坐标都是整数的点称为整点，设$$k$$ 为整数，当直线$$y=x-3$$ 与$$y=kx+k$$ 的交点为整数时，$$k$$ 的值可以取．",
+     "options": {
+      "A": "$$2$$ 个",
+      "B": "$$4$$ 个",
+      "C": "$$6$$ 个",
+      "D": "$$8$$ 个"
+     },
+     "answer": "C",
+     "analysis": "由题意得：$$\\begin{cases}y=kx+k    y=x-3   \\end{cases}$$ ，  解得：$$\\begin{cases}x=\\dfrac{k+3}{1-k}    y=\\dfrac{4k}{1-k}   \\end{cases}$$ ，  ∴$$\\begin{cases}x=-1+\\dfrac{4}{1-k}    y=-4+\\dfrac{4}{1-k}   \\end{cases}$$ ，  ∵交点为整数，  ∴$$k$$ 可取的整数解有$$0$$ ，$$2$$ ，$$3$$ ，$$5$$ ，$$-1$$ ，$$-3$$ 共$$6$$ 个．  故选$$\\text{C}$$ ． <p>由题意可知，$$x-3=k\\left( x+1 \\right)$$，</p>\n<p>所以$$k=\\frac{x-3}{x+1}=1-\\frac{4}{x+1}$$，</p>\n<p>但$$k$$为整数，</p>\n<p>于是$$x+1=\\pm 1$$，$$\\pm 2$$，$$\\pm 4$$，$$k$$可取$$6$$个值，</p>\n<p>故选$$\\text{C}$$．</p>",
+     "difficulty": "2",
+     "source": "2005年第22届全国初中数学联赛竞赛初赛第5题7分"
+    },
+    {
+     "qid": "367ab737b4ac4f7ca3c996246a859599",
+     "problem": "在平面直角坐标系中，横、纵坐标都是整数的点称为整点．若一次函数$$y=x-3$$与$$y=kx-k$$（$$k$$为整数）的图象的交点是整点，则$$k$$的不同取值的个数是．",
+     "options": {
+      "A": "$$3$$",
+      "B": "$$4$$",
+      "C": "$$5$$",
+      "D": "$$6$$"
+     },
+     "answer": "A",
+     "analysis": "由题意得$$\\begin{cases}y=x-3    y=kx-k \\end{cases}$$，  解得$$\\begin{cases}x=\\dfrac{k-3}{k-1}    y=\\dfrac{-2k}{k-1} \\end{cases}$$，  ∴$$x=1-\\frac{2}{k-1}$$，$$y=-2-\\frac{2}{k-1}$$，  ∵交点是整点，  ∴$$k-1=\\pm 1$$或$$\\pm 2$$，且$$k-1\\ne 0$$，  解得$$k=0$$，$$2$$，$$-1$$或$$3$$．  ∵$$k\\ne 0$$，  ∴$$k$$的不同取值的个数是$$3$$．  所以选$$\\text{A}$$．",
+     "difficulty": "1",
+     "source": "2016年第27届全国希望杯初二竞赛初赛第2题4分"
+    },
+    {
+     "qid": "f98e1a6a62f14df9a1d9923d38671475",
+     "problem": "在平面直角坐标系中，横、纵坐标都是整数的点称为整点．若一次函数$$y=x-3$$与$$y=kx-k$$（$$k$$为整数）的图象的交点是整点，则$$k$$的不同取值的个数是．",
+     "options": {
+      "A": "$$3$$",
+      "B": "$$4$$",
+      "C": "$$5$$",
+      "D": "$$6$$"
+     },
+     "answer": "A",
+     "analysis": "由题意得$$\\begin{cases}y=x-3    y=kx-k \\end{cases}$$，  解得$$\\begin{cases}x=\\dfrac{k-3}{k-1}    y=\\dfrac{-2k}{k-1} \\end{cases}$$，  ∴$$x=1-\\frac{2}{k-1}$$，$$y=-2-\\frac{2}{k-1}$$，  ∵交点是整点，  ∴$$k-1=\\pm 1$$或$$\\pm 2$$，且$$k-1\\ne 0$$，  解得$$k=0$$，$$2$$，$$-1$$或$$3$$．  ∵$$k\\ne 0$$，  ∴$$k$$的不同取值的个数是$$3$$．  故选$$\\text{A}$$．",
+     "difficulty": "1",
+     "source": "2016年第27届全国希望杯初二竞赛初赛第2题4分"
+    },
+    {
+     "qid": "b9033b0913584964b07b707f74de3c26",
+     "problem": "已知直线$${{l}_{1}}:y=kx+b\\left( k\\ne 0 \\right)$$与直线$${{l}_{2}}:y={{k}_{1}}x-6\\left( {{k}_{1}}\\textless{}0 \\right)$$在第三象限交于点$$M$$，若直线$${{l}_{1}}$$与$$x$$轴的交点为$$B\\left( 3,0 \\right)$$，则$$k$$的取值范围是．",
+     "options": {
+      "A": "$$-2\\textless{}k\\textless{}2$$",
+      "B": "$$-2\\textless{}k\\textless{}0$$",
+      "C": "$$0\\textless{}k\\textless{}4$$",
+      "D": "$$0\\textless{}k\\textless{}2$$"
+     },
+     "answer": "D",
+     "analysis": "$$B\\left( 3,0 \\right)$$代入$${{l}_{1}}:0=3k+b$$，  ∴$$b=-3k$$，  ∴$${{l}_{1}}:y=kx-3k$$，  将$$\\left( 0,-6 \\right)$$代入：$$k=2$$，  由图象知：$$0\\textless{}k\\textless{}2$$时，  第三象限有交点．  故选$$\\text{D}$$．",
+     "difficulty": "2",
+     "source": "2019~2020学年广东深圳南山区深圳市南山第二外国语学校集团海德学校初二上学期期中（南山二外教育集团）第11题3分"
     }
    ]
   },
@@ -3615,6 +3921,85 @@
     }
    ]
   },
+  "tp-23-01": {
+   "name": "因式分解的概念",
+   "grade": "八下",
+   "chapter": "因式分解",
+   "misconceptions": [],
+   "practice_count": 5,
+   "questions": [
+    {
+     "qid": "ac6ec3620e924e609ef65fa41355bcbc",
+     "problem": "已知$${{x}^{2}}+ax-12$$能分解成两个整系数的一次因式的乘积，则符合条件的整数$$a$$的个数是．",
+     "options": {
+      "A": "$$3$$个",
+      "B": "$$4$$个",
+      "C": "$$6$$个",
+      "D": "$$8$$个"
+     },
+     "answer": "C",
+     "analysis": "设$${{x}^{2}}+ax-12=(x+m)(x+n)$$（$$m$$，$$n$$为整数），  则$$a=m+n$$，$$mn=-12$$共有$$6$$种结果．",
+     "difficulty": "0",
+     "source": "2017~2018学年5月四川成都天府新区 成都市实验外国语学校（西区）初二下学期月考第10题3分"
+    },
+    {
+     "qid": "69cd5e4311bc4895a9b87571fc3b1b65",
+     "problem": "已知$${{x}^{2}}+ax-12$$能分解成两个整数系数的一次因式的乘积，则符合条件的整数$$a$$的个数是．",
+     "options": {
+      "A": "$$3$$个",
+      "B": "$$4$$个",
+      "C": "$$6$$个",
+      "D": "$$8$$个"
+     },
+     "answer": "C",
+     "analysis": "设$$x^{2}+ax-12$$能分解成两个整数系数的一次因式的乘积，  即$$x^{2}+ax-12=(x+m)(x+n)$$，$$m$$，$$n$$是整数，  $$\\therefore x^{2}+ax-12=x^{2}+(m+n)x+mn$$，  $$\\therefore \\begin{cases}mn=-12 \\m+n=a\\end{cases}$$，  $$\\because m$$，$$n$$是整数，且$$mn=-12$$，  有$$\\begin{cases}m=12 \\n=-1\\end{cases}$$，$$\\begin{cases}m=-1 \\n=12\\end{cases}$$，$$\\begin{cases}m=6 \\n=-2\\end{cases}$$，$$\\begin{cases}m=-2 \\n=6\\end{cases}$$，  $$\\begin{cases}m=4 \\n=-3\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=3 \\n=-4\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=2 \\n=-6\\end{cases}$$，  $$\\begin{cases}m=-6 \\n=2\\end{cases}$$，$$\\begin{cases}m=1 \\n=-12\\end{cases}$$，$$\\begin{cases}m=-12 \\n=1\\end{cases}$$，共$$12$$种情况．  而$$a=m+n$$，只有$$6$$种结果，  故选$$\\text{C}$$．",
+     "difficulty": "0",
+     "source": "1996年第7届希望杯初二竞赛第3题"
+    },
+    {
+     "qid": "055a5cdc0062482eb035244d84d99b3e",
+     "problem": "已知$${{x}^{2}}+ax-12$$能分解成两个整数系数的一次因式的乘积，则符合条件的整数$$a$$的个数是．",
+     "options": {
+      "A": "$$3$$个",
+      "B": "$$4$$个",
+      "C": "$$6$$个",
+      "D": "$$8$$个"
+     },
+     "answer": "C",
+     "analysis": "设$$x^{2}+ax-12$$能分解成两个整数系数的一次因式的乘积，  即$$x^{2}+ax-12=(x+m)(x+n)$$，$$m$$，$$n$$是整数，  $$\\therefore x^{2}+ax-12=x^{2}+(m+n)x+mn$$，  $$\\therefore \\begin{cases}mn=-12 \\m+n=a\\end{cases}$$，  $$\\because m$$，$$n$$是整数，且$$mn=-12$$，  有$$\\begin{cases}m=12 \\n=-1\\end{cases}$$，$$\\begin{cases}m=-1 \\n=12\\end{cases}$$，$$\\begin{cases}m=6 \\n=-2\\end{cases}$$，$$\\begin{cases}m=-2 \\n=6\\end{cases}$$，  $$\\begin{cases}m=4 \\n=-3\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=3 \\n=-4\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=2 \\n=-6\\end{cases}$$，  $$\\begin{cases}m=-6 \\n=2\\end{cases}$$，$$\\begin{cases}m=1 \\n=-12\\end{cases}$$，$$\\begin{cases}m=-12 \\n=1\\end{cases}$$，共$$12$$种情况．  而$$a=m+n$$，只有$$6$$种结果，  故选$$\\text{C}$$．",
+     "difficulty": "0",
+     "source": "2019~2020学年3月浙江杭州滨江区杭州二中白马湖学校初一下学期周测C卷第9题"
+    },
+    {
+     "qid": "ca8161edc4634467b6f7e98eabf9b56b",
+     "problem": "设$$p$$，$$q$$均为大于$$3$$的素数，则使$${{p}^{2}}+5pq+4{{q}^{2}}$$为完全平方数的素数对$$(p,q)$$的个数为（~ ）．",
+     "options": {
+      "A": "$$1$$",
+      "B": "$$2$$",
+      "C": "$$3$$",
+      "D": "$$4$$"
+     },
+     "answer": "B",
+     "analysis": "设$${{p}^{2}}+5pq+4{{q}^{2}}={{m}^{2}}$$ ($$m$$为自然数)，则$${{(p+2q)}^{2}}+pq={{m}^{2}}$$，即  $$(m-p-2q)(m+p+2q)=pq$$．  由于$$pq$$为素数，且$$m+p+2q\\textgreater p$$，$$m+p+2q\\textgreater q$$，  所以$$m-p-2q=1$$，$$m+p+2q=pq$$，  从而$$pq-2p-4q-1=0$$，即$$(p-4)(q-2)=9$$，  所以，$$(p,q)=(5,11)$$或$$(7,5)$$．  所以，满足条件的素数对$$(p,q)$$的个数为$$2$$．",
+     "difficulty": "4",
+     "source": "2018年全国初中数学联赛竞赛A卷"
+    },
+    {
+     "qid": "ff8080814cfa9b24014cfe9600870a3b",
+     "problem": "已知$${{x}^{2}}+ax-12$$能分解成两个整数系数的一次因式的乘积，则符合条件的整数$$a$$的个数是．",
+     "options": {
+      "A": "$$3$$个",
+      "B": "$$4$$个",
+      "C": "$$6$$个",
+      "D": "$$8$$个"
+     },
+     "answer": "C",
+     "analysis": "设$$x^{2}+ax-12$$能分解成两个整数系数的一次因式的乘积，  即$$x^{2}+ax-12=(x+m)(x+n)$$，$$m$$，$$n$$是整数，  $$\\therefore x^{2}+ax-12=x^{2}+(m+n)x+mn$$，  $$\\therefore \\begin{cases}mn=-12 \\m+n=a\\end{cases}$$，  $$\\because m$$，$$n$$是整数，且$$mn=-12$$，  有$$\\begin{cases}m=12 \\n=-1\\end{cases}$$，$$\\begin{cases}m=-1 \\n=12\\end{cases}$$，$$\\begin{cases}m=6 \\n=-2\\end{cases}$$，$$\\begin{cases}m=-2 \\n=6\\end{cases}$$，  $$\\begin{cases}m=4 \\n=-3\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=3 \\n=-4\\end{cases}$$，$$\\begin{cases}m=-3 \\n=4\\end{cases}$$，$$\\begin{cases}m=2 \\n=-6\\end{cases}$$，  $$\\begin{cases}m=-6 \\n=2\\end{cases}$$，$$\\begin{cases}m=1 \\n=-12\\end{cases}$$，$$\\begin{cases}m=-12 \\n=1\\end{cases}$$，共$$12$$种情况．  而$$a=m+n$$，只有$$6$$种结果，  故选$$\\text{C}$$．",
+     "difficulty": "0",
+     "source": "上海自主招生近5年（2015-2019）真题题型分类汇编第15题"
+    }
+   ]
+  },
   "tp-23-02": {
    "name": "提公因式法",
    "grade": "八下",
@@ -3669,7 +4054,7 @@
      "fix": "分解到每个因式都不能再分为止,x²-1 还能继续分解"
     }
    ],
-   "practice_count": 3,
+   "practice_count": 21,
    "questions": [
     {
      "qid": "0b5a5995283f4782949dbaca86e6a0ca",
@@ -3700,18 +4085,60 @@
      "source": "初一其它"
     },
     {
-     "qid": "173009f9de154f9482ecc4e79afc9134",
-     "problem": "下列五个多项式：  ①$${{a}^{2}}{{b}^{2}}-{{a}^{2}}-{{b}^{2}}-1$$；  ②$${{x}^{3}}-9a{{x}^{2}}+27{{a}^{2}}x-27{{a}^{3}}$$；  ③$$x(b+c-d)-y(d-b-c)-2c+2d-2b$$；  ④$$3m(m-n)+6n(n-m)$$；  ⑤$${{(x-2)}^{2}}+4x$$．  其中在有理数范围内可以进行因式分解的有．",
+     "qid": "146fc342b2254abeb5a35eccda0a8416",
+     "problem": "$${{2}^{16}}-1$$能分解成$$n$$个质因数的乘积，$$n$$的值是．",
      "options": {
-      "A": "①，②，③",
-      "B": "②，③，④",
-      "C": "③，④，⑤",
-      "D": "①，②，④"
+      "A": "$$6$$",
+      "B": "$$5$$",
+      "C": "$$4$$",
+      "D": "$$3$$"
+     },
+     "answer": "C",
+     "analysis": "方法一：$${{2}^{16}}-1$$  $$=({{2}^{8}}+1)({{2}^{8}}-1)$$  $$=\\cdots $$  $$=({{2}^{8}}+1)({{2}^{4}}+1)({{2}^{2}}+1)({{2}^{1}}+1)({{2}^{1}}-1)$$，  其中，除了$${{2}^{1}}-1=1$$外，其余$$4$$个括号内的数都是质数，  所以$${{2}^{16}}-1$$可以分解为$$4$$个质因数的乘积．  方法二：首先利用平方差公式分解因式，即可求得：  $$216-1=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 2+1 \\right)\\left( 2-1 \\right)$$，  则问题得解．  ∵$$216-1=\\left( 28+1 \\right)\\left( 28-1 \\right)=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 24-1 \\right)$$  $$=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 22-1 \\right)$$  $$=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 2+1 \\right)\\left( 2-1 \\right)=257\\times 17\\times 5\\times 3$$．  ∴$$n=4$$．  所以选$$\\text{C}$$．",
+     "difficulty": "2",
+     "source": "2011年第22届全国希望杯初二竞赛初赛第8题4分"
+    },
+    {
+     "qid": "ff8080814cfa9b24014cff35a27e0e65",
+     "problem": "$${{2}^{16}}-1$$能分解成$$n$$个质因数的乘积，$$n$$的值是（~ ）．",
+     "options": {
+      "A": "$$6$$",
+      "B": "$$5$$",
+      "C": "$$4$$",
+      "D": "$$3$$"
+     },
+     "answer": "C",
+     "analysis": "$${{2}^{16}}-1$$  $$=({{2}^{8}}+1)({{2}^{8}}-1)$$  $$=\\cdots $$  $$=({{2}^{8}}+1)({{2}^{4}}+1)({{2}^{2}}+1)({{2}^{1}}+1)({{2}^{1}}-1)$$，  其中，除了$${{2}^{1}}-1=1$$外，其余$$4$$个括号内的数都是质数，  所以$${{2}^{16}}-1$$可以分解为$$4$$个质因数的乘积． <p>首先利用平方差公式分解因式，即可求得：</p>\n<p>$$216-1=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 2+1 \\right)\\left( 2-1 \\right)$$，</p>\n<p>则问题得解．</p>\n<p>∵$$216-1=\\left( 28+1 \\right)\\left( 28-1 \\right)=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 24-1 \\right)$$</p>\n<p>$$=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 22-1 \\right)$$</p>\n<p>$$=\\left( 28+1 \\right)\\left( 24+1 \\right)\\left( 22+1 \\right)\\left( 2+1 \\right)\\left( 2-1 \\right)=257\\times 17\\times 5\\times 3$$．</p>\n<p>&there4;$$n=4$$．</p>\n<p>故选$$\\text{C}$$．</p>",
+     "difficulty": "2",
+     "source": "2011年第22届全国希望杯初二竞赛初赛第8题4分"
+    },
+    {
+     "qid": "ff8080814cfa9b24014cfe948e250a26",
+     "problem": "把多项式$${{x}^{2}}-{{y}^{2}}-2x-4y-3$$因式分解之后，正确的结果是（~ ）．",
+     "options": {
+      "A": "$$(x+y+3)(x-y-1)$$",
+      "B": "$$(x+y-1)(x-y+3)$$",
+      "C": "$$(x+y-3)(x-y+1)$$",
+      "D": "$$(x+y+1)(x-y-3)$$"
+     },
+     "answer": "D",
+     "analysis": "$${{x}^{2}}-{{y}^{2}}-2x-4y-3$$  $$={{x}^{2}}-2x+1-({{y}^{2}}+4y+4)$$  $$={{(x-1)}^{2}}-{{(y+2)}^{2}}$$  $$=(x-1+y+2)(x-1-y-2)$$  $$=(x+y+1)(x-y-3)$$．",
+     "difficulty": "2",
+     "source": "初二其它"
+    },
+    {
+     "qid": "c5245674e0914c77b047fe393f566639",
+     "problem": "$$y-2x+1$$是$$4xy-4{{x}^{2}}-{{y}^{2}}-k$$的一个因式，则$$k$$的值是．",
+     "options": {
+      "A": "$$0$$",
+      "B": "$$-1$$",
+      "C": "$$1$$",
+      "D": "$$4$$"
      },
      "answer": "B",
-     "analysis": "②式$$={{(x-3a)}^{3}}$$，  ③式$$=x(b+c-d)+y(b+c-d)-2(b+c-d)$$  $$=(b+c-d)(x+y-2)$$，  ④式$$=(m-n)(3m-6n)=3(m-n)(m-2n)$$．  所以，②、③、④式合乎要求．  故选$$\\text{B}$$．",
+     "analysis": "由因式定理可知，当$$y-2x+1=0$$时，  $$4xy-4{{x}^{2}}-{{y}^{2}}-k=0$$，  因此可令$$\\begin{cases}x=0    y=-1   \\end{cases}$$，  则$$4xy-4{{x}^{2}}-{{y}^{2}}-k=-1-k=0$$，  ∴$$k=-1$$．  所以答案为：$$k=-1$$．",
      "difficulty": "1",
-     "source": "1999年第10届希望杯初二竞赛第2试第1题"
+     "source": "2020~2021学年6月江苏苏州工业园区星港学校初一下学期周测B卷第8题2分"
     }
    ]
   },
@@ -4119,6 +4546,29 @@
     }
    ]
   },
+  "tp-27-01": {
+   "name": "一元二次方程的概念",
+   "grade": "九上",
+   "chapter": "一元二次方程",
+   "misconceptions": [],
+   "practice_count": 1,
+   "questions": [
+    {
+     "qid": "d68b68b59f35484386cdb91bb271b382",
+     "problem": "如果$$x=-1$$是方程$${{x}^{2}}+mx+n=0$$的一个根，那么$$m$$，$$n$$的大小关系是．",
+     "options": {
+      "A": "$$m\\textgreater n$$",
+      "B": "$$m=n$$",
+      "C": "$$m\\textless{}n$$",
+      "D": "不确定的"
+     },
+     "answer": "A",
+     "analysis": "因为$$x=-1$$是$${{x}^{2}}+mx+n=0$$的根，  则有$${{(-1)}^{2}}+m\\cdot (-1)+n=0$$，  所以$$m-n=1$$，即$$m\\textgreater n$$．  故选$$\\text{A}$$．",
+     "difficulty": "0",
+     "source": "2002年第13届希望杯初一竞赛第1试第5题"
+    }
+   ]
+  },
   "tp-27-03": {
    "name": "公式法与根的判别式",
    "grade": "九上",
@@ -4130,7 +4580,7 @@
      "fix": "含参数方程先保证二次项系数非零再讨论 Δ"
     }
    ],
-   "practice_count": 19,
+   "practice_count": 22,
    "questions": [
     {
      "qid": "17fd018ccac64bb8b1c5a3052e926fc7",
@@ -4145,6 +4595,20 @@
      "analysis": "因为不论$$x$$为何实数，$${{x}^{2}}+\\textbar x\\textbar+1$$总是大于零的．  故选$$\\text{D}$$．",
      "difficulty": "1",
      "source": "1991年第2届希望杯初二竞赛第9题"
+    },
+    {
+     "qid": "08b6ae32fffe46f2a0bf99aeb5d02fed",
+     "problem": "满足$${{({{x}^{2}}+x-1)}^{x+2}}=1$$的整数$$x$$的个数为（~ ）．",
+     "options": {
+      "A": "$$1$$",
+      "B": "$$2$$",
+      "C": "$$3$$",
+      "D": "$$4$$"
+     },
+     "answer": "C",
+     "analysis": "当$$x+2=0$$且$${{x}^{2}}+x-1\\ne 0$$时，$$x=-2$$，  当$${{x}^{2}}+x-1=1$$时，$$x=-2$$或$$x=1$$，  当$${{x}^{2}}+x-1=-1$$且$$x+2$$为偶数时，$$x=0$$，  所以，满足条件的整数$$x$$有$$3$$个．  故选$$\\text{C}$$．",
+     "difficulty": "2",
+     "source": "2018年全国初中数学联赛竞赛B卷"
     },
     {
      "qid": "c76596654af749dfbae0743c97e5b2de",
@@ -4201,20 +4665,6 @@
      "analysis": "当$$x\\leqslant 0$$时，$${{x}^{2}}+3x-1 ~\\textless{} ~0$$，此时$$x\\leqslant 0$$时，原方程无解，  当$$x\\geqslant \\frac{1}{3}$$时，$${{x}^{3}}+3x-1\\textgreater0$$时，此时原方程的实数根只能在$$\\left( 0,\\frac{1}{3} \\right)$$之间，因为$$a$$是方程$${{x}^{3}}+3x-1=0$$的一个实数根，所以$$0 ~\\textless{} ~a ~\\textless{} ~\\frac{1}{3}$$，对于相线$$y=ax+1-a$$，由于$$a\\textgreater0$$，$$1-a\\textgreater0$$，所以，直线不经过第四象限．  故选$$\\text{D}$$．",
      "difficulty": "1",
      "source": "2008年第19届希望杯初二竞赛第2试第10题"
-    },
-    {
-     "qid": "6a337fb8ff5c41588e54b80b74b0e018",
-     "problem": "已知关于$$x$$的方程$${{x}^{2}}-6x-4{{n}^{2}}-32n=0$$的根都是整数，则整数$$n$$的值为．",
-     "options": {
-      "A": "$$10$$或$$-18$$",
-      "B": "$$0$$或$$-8$$",
-      "C": "$$10$$或$$-18$$或$$0$$或$$-8$$",
-      "D": "以上都不对"
-     },
-     "answer": "C",
-     "analysis": "利用求根公式得到$$x=3\\pm \\sqrt{4{{n}^{2}}+32n+9}$$，  为使$$x$$为整数，只要求$$4{{n}^{2}}+32n+9={{k}^{2}}$$$$\\left( k\\geqslant 0 \\right)$$，（这种方法在处理完全平方数的问题中很常用）  配方得到$${{\\left( 2n+8 \\right)}^{2}}-{{k}^{2}}=55$$，  即$$\\left( 2n+8+k \\right)\\left( 2n+8-k \\right)=55$$，  考虑到$$k$$是非负的，所以$$2n+8+k=55$$或$$11$$或$$-1$$或$$-5$$，  对应的$$2n+8-k=1$$或$$5$$或$$-55$$或$$-11$$．  得到$$n=10$$或$$0$$或$$-18$$或$$-8$$．  由题方程$${{x}^{2}}-6x-4{{n}^{2}}-32n=0$$的根都是整数，  则$${{b}^{2}}-4ac=36-4(-4{{n}^{2}}-32n)=4(4{{n}^{2}}+32n+9)$$为一个完全平方数，  所以$$4{{n}^{2}}+32n+9$$为一个完全平方数，  不妨设$$4{{n}^{2}}+32n+9={{k}^{2}}$$$$(k\\geqslant 0)$$，（这种方法在处理完全平方数的问题中很常用）  配方得到$${{(2n+8)}^{2}}-{{k}^{2}}=55$$，  即$$(2n+8+k)(2n+8-k)=55$$，考虑到$$k$$是非负的，  所以$$2n+8+k=55$$或$$11$$或$$-1$$或$$-5$$，  对应的$$2n+8-k=1$$或$$5$$或$$-55$$或$$-11$$．得到$$n=10$$或$$0$$或$$-18$$或$$-8$$．",
-     "difficulty": "3",
-     "source": "2004年第21届全国初中数学联赛竞赛第1题"
     }
    ]
   },
@@ -4223,8 +4673,22 @@
    "grade": "九上",
    "chapter": "一元二次方程",
    "misconceptions": [],
-   "practice_count": 14,
+   "practice_count": 21,
    "questions": [
+    {
+     "qid": "d5119074654e4472b1214130cb279fcb",
+     "problem": "方程$${{x}^{2}}+667x+1992=0$$的较大的那个实根的负倒数等于．",
+     "options": {
+      "A": "$$\\frac{1}{664}$$",
+      "B": "$$-\\frac{1}{667}$$",
+      "C": "$$\\frac{1}{1992}$$",
+      "D": "$$\\frac{1}{3}$$"
+     },
+     "answer": "D",
+     "analysis": "设较大的那个实根为$$x$$，  则当$$-\\frac{1}{x}=\\frac{1}{664}$$时，$$x=-664$$，  当$$-\\frac{1}{x}=-\\frac{1}{667}$$时，$$x=667$$，  当$$-\\frac{1}{x}=\\frac{1}{1992}$$时，$$x=-1992$$，  当$$-\\frac{1}{x}=\\frac{1}{3}$$时，$$x=-3$$．  由于方程$${{x}^{2}}+667x+1992=0$$不能有非负根，所以$$x=667$$排除，  剩下的$$-664$$，$$-1992$$，$$-3$$这三个数中，最大者为$$-3$$，  以$$-3$$代入原方程，恰好满足方程．  故选$$\\text{D}$$．",
+     "difficulty": "1",
+     "source": "1992年第3届希望杯初二竞赛第10题"
+    },
     {
      "qid": "17fd018ccac64bb8b1c5a3052e926fc7",
      "problem": "方程$${{x}^{2}}+\\textbar x\\textbar+1=0$$的实数根的个数是．",
@@ -4254,6 +4718,20 @@
      "source": "2008年第19届希望杯初二竞赛第2试第10题"
     },
     {
+     "qid": "d68b68b59f35484386cdb91bb271b382",
+     "problem": "如果$$x=-1$$是方程$${{x}^{2}}+mx+n=0$$的一个根，那么$$m$$，$$n$$的大小关系是．",
+     "options": {
+      "A": "$$m\\textgreater n$$",
+      "B": "$$m=n$$",
+      "C": "$$m\\textless{}n$$",
+      "D": "不确定的"
+     },
+     "answer": "A",
+     "analysis": "因为$$x=-1$$是$${{x}^{2}}+mx+n=0$$的根，  则有$${{(-1)}^{2}}+m\\cdot (-1)+n=0$$，  所以$$m-n=1$$，即$$m\\textgreater n$$．  故选$$\\text{A}$$．",
+     "difficulty": "0",
+     "source": "2002年第13届希望杯初一竞赛第1试第5题"
+    },
+    {
      "qid": "6a337fb8ff5c41588e54b80b74b0e018",
      "problem": "已知关于$$x$$的方程$${{x}^{2}}-6x-4{{n}^{2}}-32n=0$$的根都是整数，则整数$$n$$的值为．",
      "options": {
@@ -4280,34 +4758,35 @@
      "analysis": "因为$$\\Delta \\geqslant 0$$，所以$$36{{(a+1)}^{2}}-36({{a}^{2}}-3)\\geqslant 0$$，所以$$a\\geqslant -2$$，又$${{x}_{1}}\\cdot {{x}_{2}}=1$$，所以$$\\frac{{{a}^{2}}-3}{9}=1$$，解得$$a=\\pm 2\\sqrt{3}$$．又由$$a\\geqslant -2$$，所以$$a=2\\sqrt{3}$$．故选$$\\text{B}$$．",
      "difficulty": "1",
      "source": "1993年第4届希望杯初二竞赛第14题"
-    },
+    }
+   ]
+  },
+  "tp-27-06": {
+   "name": "一元二次方程的应用",
+   "grade": "九上",
+   "chapter": "一元二次方程",
+   "misconceptions": [
     {
-     "qid": "556c0998702840b9b3d9894e9da6dd59",
-     "problem": "方程$$\\textbar{{x}^{2}}-1\\textbar=\\frac{1}{10}\\left( x+\\frac{9}{10} \\right)$$的实根的个数为．",
-     "options": {
-      "A": "$$4$$",
-      "B": "$$3$$",
-      "C": "$$2$$",
-      "D": "$$1$$"
-     },
-     "answer": "C",
-     "analysis": "当$$\\textbar x\\textbar\\textgreater1$$时，有方程$${{x}^{2}}-1=\\frac{1}{10}\\left( x+\\frac{9}{10} \\right)$$，由根与系数关系可知，方程有一正根一负根，且正根符合要求；当$$\\textbar x\\textbar\\textless{}1$$时，有方程$$1-{{x}^{2}}=\\frac{1}{10}\\left( x+\\frac{9}{10} \\right)$$，同理可知也是一正根一负根，正根符合要求，所以共有$$2$$个根．  故选$$\\text{C}$$．",
-     "difficulty": "1",
-     "source": "1991年第2届希望杯初二竞赛第7题"
-    },
+     "id": "mc-41",
+     "point": "增长率问题 a(1+x)²=b 中指数漏写2",
+     "fix": "两段增长就是平方,n 段就是 n 次方,下降用减"
+    }
+   ],
+   "practice_count": 1,
+   "questions": [
     {
-     "qid": "20134a8cdb6e49b2902ce48cc4850d1e",
-     "problem": "质数$$a$$和$$b$$是$$x$$的整系数方程$${{x}^{2}}-21x+t=0$$的两个根，则$$\\frac{b}{a}+\\frac{a}{b}$$等于（~ ）．",
+     "qid": "7b21b04006b240a68ce5ad0f29fc41e5",
+     "problem": "定义：一个工厂一年的生产增长率就是：  $$\\frac{当年产值 - 前一年产值}{前一年产值}\\times 100 \\%$$  如果该工厂$$2000$$年的产值要达到$$1998$$年产值的$$1.44$$倍，而且每年的生产增长率都是$$x$$，则$$x$$等于．",
      "options": {
-      "A": "$$2213$$",
-      "B": "$$\\frac{58}{21}$$",
-      "C": "$$\\frac{2402}{49}$$",
-      "D": "$$\\frac{365}{38}$$"
+      "A": "$$5 \\%$$",
+      "B": "$$10 \\%$$",
+      "C": "$$15 \\%$$",
+      "D": "$$20 \\%$$"
      },
      "answer": "D",
-     "analysis": "由$$a+b=21$$，$$a$$，$$b$$是质数可知$$a$$，$$b$$必为$$2$$与$$19$$两数，  而$$\\frac{b}{a}+\\frac{a}{b}=\\frac{{{a}^{2}}+{{b}^{2}}}{ab}=\\frac{{{2}^{2}}+{{19}^{2}}}{2\\times 19}=\\frac{365}{38}$$．故选$$\\text{D}$$．",
+     "analysis": "设$$1998$$年的产值为$$1$$，则$$1999$$年产值为$$1+x$$，$$2000$$年产值为$$(1+x)+(1+x)x={{(1+x)}^{2}}$$．依题意，应当$${{(1+x)}^{2}}=1.44$$．  因为$${{(\\pm 1.2)}^{2}}=1.44$$，且$$x\\textgreater0$$，  所以$$1+x=1.2$$，$$x=0.2=20 \\%$$．  故选$$\\text{D}$$．",
      "difficulty": "1",
-     "source": "1991年第2届希望杯初二竞赛第10题"
+     "source": "1999年第10届希望杯初一竞赛第10题"
     }
    ]
   },
@@ -4807,6 +5286,29 @@
      "analysis": "因为二次函数$$y=a{{x}^{2}}+bx+c$$的图象与$$x$$轴有唯一交点，  所以$${{\\Delta }_{1}}={{b}^{1}}-4ac=0$$，  所以$${{b}^{2}}=4ac\\ne 0$$．  故二次函数$$y={{a}^{3}}{{x}^{2}}+{{b}^{3}}x+{{c}^{3}}$$的判别式$${{\\Delta }_{2}}={{({{b}^{3}})}^{2}}-4{{a}^{3}}{{c}^{3}}={{b}^{6}}-\\frac{1}{16}{{(4ac)}^{3}}={{b}^{6}}-\\frac{1}{16}{{({{b}^{2}})}^{3}}=\\frac{15}{16}{{b}^{6}}\\textgreater0$$，  所以，二次函数$$y={{a}^{3}}{{x}^{2}}+{{b}^{3}}x+{{c}^{3}}$$的图象与$$x$$轴有两个交点．  故选$$\\text{C}$$．",
      "difficulty": "2",
      "source": "2017年全国全国初中数学联赛竞赛"
+    }
+   ]
+  },
+  "tp-34-01": {
+   "name": "圆的概念与对称性",
+   "grade": "九下",
+   "chapter": "圆",
+   "misconceptions": [],
+   "practice_count": 1,
+   "questions": [
+    {
+     "qid": "54af56bb73774292a990f051d1f628c1",
+     "problem": "如果一个三角形的面积和周长都被一直线平分，那么该直线必通过这个三角形的（~ ~ ）．",
+     "options": {
+      "A": "内心",
+      "B": "外心",
+      "C": "重心",
+      "D": "垂心"
+     },
+     "answer": "A",
+     "analysis": "设直线$$DE$$平分$${\\triangle }ABC$$的周长和面积，$$D$$，$$E$$分别在边$$AB$$和$$AC$$上，作$$\\angle A$$的平分线交$$DE$$于$$P$$，记$$P$$到$$AB$$，$$AC$$的距离为$$r$$，$$P$$到$$BC$$的距离为$${{r}_{1}}$$，于是依题意有：  $$\\begin{cases}AD+AE=DB+BC+CE    \\dfrac{r}{2}(AD+AE)=\\dfrac{r}{2}(DB+CE)+\\dfrac{{{r}_{1}}}{2}BC \\end{cases}$$，  解得$$r={{r}_{1}}$$，即$$P$$为$${\\triangle }ABC$$的内心，  故选$$\\text{A}$$．",
+     "difficulty": "1",
+     "source": "1996年第13届全国初中数学联赛竞赛第5题"
     }
    ]
   },

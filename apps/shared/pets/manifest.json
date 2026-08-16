@@ -1,0 +1,177 @@
+{
+  "source": "Noto Animated Emoji (Google)",
+  "source_url": "https://googlefonts.github.io/noto-emoji-animation/",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "canvas": 256,
+  "species": [
+    {
+      "id": "bear",
+      "name": "小熊",
+      "png": 27729,
+      "webp": 113384,
+      "cp": "1f43b"
+    },
+    {
+      "id": "butterfly",
+      "name": "蝴蝶",
+      "png": 59364,
+      "webp": 375090,
+      "cp": "1f98b"
+    },
+    {
+      "id": "chick",
+      "name": "小鸡",
+      "png": 19348,
+      "webp": 184820,
+      "cp": "1f425"
+    },
+    {
+      "id": "chipmunk",
+      "name": "花栗鼠",
+      "png": 36656,
+      "webp": 319646,
+      "cp": "1f43f"
+    },
+    {
+      "id": "dog",
+      "name": "小狗",
+      "png": 31622,
+      "webp": 220310,
+      "cp": "1f415"
+    },
+    {
+      "id": "dolphin",
+      "name": "海豚",
+      "png": 26491,
+      "webp": 118590,
+      "cp": "1f42c"
+    },
+    {
+      "id": "flamingo",
+      "name": "火烈鸟",
+      "png": 25947,
+      "webp": 315408,
+      "cp": "1f9a9"
+    },
+    {
+      "id": "fox",
+      "name": "狐狸",
+      "png": 32055,
+      "webp": 191502,
+      "cp": "1f98a"
+    },
+    {
+      "id": "frog",
+      "name": "青蛙",
+      "png": 26800,
+      "webp": 316872,
+      "cp": "1f438"
+    },
+    {
+      "id": "hedgehog",
+      "name": "刺猬",
+      "png": 41658,
+      "webp": 153480,
+      "cp": "1f994"
+    },
+    {
+      "id": "octopus",
+      "name": "章鱼",
+      "png": 39285,
+      "webp": 215622,
+      "cp": "1f419"
+    },
+    {
+      "id": "otter",
+      "name": "水獭",
+      "png": 40391,
+      "webp": 284956,
+      "cp": "1f9a6"
+    },
+    {
+      "id": "owl",
+      "name": "猫头鹰",
+      "png": 43489,
+      "webp": 181256,
+      "cp": "1f989"
+    },
+    {
+      "id": "panda",
+      "name": "熊猫",
+      "png": 31574,
+      "webp": 218422,
+      "cp": "1f43c"
+    },
+    {
+      "id": "penguin",
+      "name": "企鹅",
+      "png": 25644,
+      "webp": 309066,
+      "cp": "1f427"
+    },
+    {
+      "id": "pig",
+      "name": "小猪",
+      "png": 26607,
+      "webp": 268508,
+      "cp": "1f416"
+    },
+    {
+      "id": "rabbit",
+      "name": "兔子",
+      "png": 24251,
+      "webp": 103974,
+      "cp": "1f407"
+    },
+    {
+      "id": "sauropod",
+      "name": "长颈龙",
+      "png": 34393,
+      "webp": 319134,
+      "cp": "1f995"
+    },
+    {
+      "id": "seal",
+      "name": "海豹",
+      "png": 37156,
+      "webp": 234066,
+      "cp": "1f9ad"
+    },
+    {
+      "id": "sloth",
+      "name": "树懒",
+      "png": 43952,
+      "webp": 511350,
+      "cp": "1f9a5"
+    },
+    {
+      "id": "tiger",
+      "name": "老虎",
+      "png": 42774,
+      "webp": 508024,
+      "cp": "1f405"
+    },
+    {
+      "id": "trex",
+      "name": "霸王龙",
+      "png": 35535,
+      "webp": 189804,
+      "cp": "1f996"
+    },
+    {
+      "id": "turtle",
+      "name": "乌龟",
+      "png": 35159,
+      "webp": 246680,
+      "cp": "1f422"
+    },
+    {
+      "id": "unicorn",
+      "name": "独角兽",
+      "png": 54683,
+      "webp": 318228,
+      "cp": "1f984"
+    }
+  ]
+}

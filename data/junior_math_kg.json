@@ -11,7 +11,7 @@
     },
     "exam_weight": "high=中考高频 core / medium=常考 / low=了解 / optional=选学",
     "node_count": 178,
-    "edge_count": 337,
+    "edge_count": 339,
     "node_stats": {
       "domain": 3,
       "chapter": 34,
@@ -19,7 +19,7 @@
     },
     "edge_stats": {
       "BELONGS_TO": 175,
-      "PREREQUISITE_OF": 155,
+      "PREREQUISITE_OF": 157,
       "RELATED_TO": 7
     },
     "usage": {
@@ -2798,6 +2798,16 @@
     {
       "from": "tp-04-03",
       "to": "tp-04-04",
+      "type": "PREREQUISITE_OF"
+    },
+    {
+      "from": "tp-04-05",
+      "to": "tp-25-04",
+      "type": "PREREQUISITE_OF"
+    },
+    {
+      "from": "tp-04-05",
+      "to": "tp-34-01",
       "type": "PREREQUISITE_OF"
     },
     {

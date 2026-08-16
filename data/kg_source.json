@@ -244,6 +244,8 @@
     {"from": "ch-01", "to": "ch-04", "type": "PREREQUISITE_OF"},
     {"from": "tp-04-01", "to": "tp-04-02", "type": "PREREQUISITE_OF"},
     {"from": "tp-04-03", "to": "tp-04-04", "type": "PREREQUISITE_OF"},
+    {"from": "tp-04-05", "to": "tp-25-04", "type": "PREREQUISITE_OF"},
+    {"from": "tp-04-05", "to": "tp-34-01", "type": "PREREQUISITE_OF"},
 
     {"from": "tp-05-01", "to": "tp-05-02", "type": "PREREQUISITE_OF"},
     {"from": "tp-05-02", "to": "tp-05-03", "type": "PREREQUISITE_OF"},

@@ -9,6 +9,8 @@
  *   FR-VOTE-11 手机端并行通道
  */
 
+import { petSVG } from "/shared/pet.js";
+
 const API = "/api/v1";
 const params = new URLSearchParams(location.search);
 
@@ -102,49 +104,11 @@ const math = (s) => !s ? "" : String(s)
   }).join("");
 
 /* ------------------------------------------------------------------ 宠物形象
- * 六种几何精灵(PRD FR-PET-01),参数化生成,不依赖图片资源。
+ * 绘制在 /shared/pet.js(与教师端共用):24 种动物的形象来自 Noto Animated
+ * Emoji(CC BY 4.0,见 /shared/pets/CREDITS.md),色相柔光、表情状态与等级
+ * 配饰仍由 hue / idle / cheer / level 参数化叠加。
+ * 网格里一律用静态帧,只有被点中放大的那一只传 alive:true 换成动图。
  */
-function petSVG(species, hue, { idle = false } = {}) {
-  const main = `hsl(${hue} 62% 60%)`;
-  const dark = `hsl(${hue} 55% 44%)`;
-  const light = `hsl(${hue} 70% 72%)`;
-  const face = `
-    <g>
-      <ellipse cx="41" cy="55" rx="5.4" ry="6.4" fill="#fff"/>
-      <ellipse cx="59" cy="55" rx="5.4" ry="6.4" fill="#fff"/>
-      <circle cx="42.2" cy="56.4" r="2.8" fill="#1a1d28"/>
-      <circle cx="60.2" cy="56.4" r="2.8" fill="#1a1d28"/>
-      <path d="M44 67 Q50 72 56 67" stroke="#1a1d28" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-    </g>`;
-  let body;
-  switch (species) {
-    case "sphere":
-      body = `<circle cx="50" cy="55" r="34" fill="${main}"/>
-              <ellipse cx="38" cy="40" rx="11" ry="7" fill="${light}" opacity=".55" transform="rotate(-28 38 40)"/>`;
-      break;
-    case "cone":
-      body = `<ellipse cx="50" cy="80" rx="32" ry="9" fill="${dark}"/>
-              <path d="M50 16 L80 80 Q50 89 20 80 Z" fill="${main}"/>`;
-      break;
-    case "cylinder":
-      body = `<path d="M20 32 h60 v46 a30 9 0 0 1 -60 0 Z" fill="${main}"/>
-              <ellipse cx="50" cy="32" rx="30" ry="9" fill="${light}"/>`;
-      break;
-    case "prism":
-      body = `<path d="M50 18 L82 37 L82 73 L50 92 L18 73 L18 37 Z" fill="${main}"/>
-              <path d="M50 18 L82 37 L50 56 L18 37 Z" fill="${light}" opacity=".7"/>`;
-      break;
-    case "pyramid":
-      body = `<path d="M50 16 L86 82 L50 82 Z" fill="${dark}"/>
-              <path d="M50 16 L14 82 L50 82 Z" fill="${main}"/>`;
-      break;
-    default: // cube
-      body = `<path d="M50 14 L84 32 L50 50 L16 32 Z" fill="${light}"/>
-              <path d="M16 32 L50 50 L50 88 L16 70 Z" fill="${main}"/>
-              <path d="M84 32 L50 50 L50 88 L84 70 Z" fill="${dark}"/>`;
-  }
-  return `<svg viewBox="0 0 100 100" class="${idle ? "idle" : ""}" aria-hidden="true">${body}${face}</svg>`;
-}
 
 const STAR = `<svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
   <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.3 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>`;
@@ -322,14 +286,16 @@ function renderGarden() {
   for (const p of S.pets) {
     const row = parseInt(p.seat_no.slice(0, 2), 10) || 1;
     const col = parseInt(p.seat_no.slice(2), 10) || 1;
+    const done = S.submitted.has(p.student_id);
     const b = document.createElement("button");
-    b.className = "pet-cell" + (S.submitted.has(p.student_id) ? " done" : "");
+    b.className = "pet-cell" + (done ? " done" : "");
     b.style.gridRow = String(row);
     b.style.gridColumn = String(col);
     b.dataset.sid = p.student_id;
     b.innerHTML =
-      `<div class="pet-art${open ? "" : " idle"}">${petSVG(p.species, p.hue, { idle: !open })}` +
-      `${S.submitted.has(p.student_id) ? STAR : ""}</div>` +
+      `<div class="pet-art${open ? "" : " idle"}${done ? " cheer" : ""}">` +
+      petSVG(p.species, p.hue, { idle: !open, cheer: done, level: p.level }) +
+      `${done ? STAR : ""}</div>` +
       `<span class="nick">${esc(p.nickname)}</span>` +
       `<span class="seat">${esc(p.seat_no)}</span>`;
     g.appendChild(b);
@@ -356,7 +322,9 @@ $("garden").addEventListener("click", (ev) => {
   S.cur = pet;
   S.pinBuf = "";
   S.picks.clear();
-  $("cf-art").innerHTML = petSVG(pet.species, pet.hue);
+    // alive:被点中的这一只才加载动图。宠物在被认领的瞬间活过来,
+    // 而网格里 40 只同时循环动画既吵又费电。
+    $("cf-art").innerHTML = petSVG(pet.species, pet.hue, { level: pet.level, alive: true });
   $("cf-nick").textContent = pet.nickname;
   $("cf-err").textContent = S.submitted.has(pet.student_id) ? "你已经选过了，可以重新选一次覆盖之前的答案" : "";
   drawPin();
@@ -405,7 +373,7 @@ $("cf-back").addEventListener("click", () => { resetFlow(); show("s-garden"); })
 
 /* ------------------------------------------------------------------ 选题 */
 function openPicker() {
-  $("pk-art").innerHTML = petSVG(S.cur.species, S.cur.hue);
+  $("pk-art").innerHTML = petSVG(S.cur.species, S.cur.hue, { level: S.cur.level, alive: true });
   $("pk-nick").textContent = S.cur.nickname;
   renderWall();
   show("s-pick");
@@ -533,7 +501,8 @@ async function submit(choices) {
 }
 
 function showDone(pet, n, energy) {
-  $("dn-art").innerHTML = petSVG(pet.species, pet.hue);
+  $("dn-art").innerHTML = petSVG(pet.species, pet.hue,
+                                 { cheer: true, level: pet.level ?? 1, alive: true });
   $("dn-title").textContent = n ? "收到啦！" : "好的，今天先这样";
   $("dn-sub").textContent = n
     ? `${pet.nickname} 帮你把 ${n} 道题告诉老师了`

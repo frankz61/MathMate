@@ -63,6 +63,7 @@ class Student(Base):
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
     # 姓名属敏感信息:大屏 bootstrap 永不下发(FR-VOTE-10),仅教师端下钻可见
     name: Mapped[str] = mapped_column(String(64))
+    student_no: Mapped[str | None] = mapped_column(String(32), nullable=True)   # 学号(PRIV-03 最小化字段)
     seat_no: Mapped[str] = mapped_column(String(8))   # "0305" = 3 排 5 座,后两位用于轻量确认
     status: Mapped[str] = mapped_column(String(16), default="active")
 

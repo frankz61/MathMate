@@ -18,18 +18,42 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
+import logging
 import re
 import time
+import uuid
 from typing import Any
 
 import httpx
 
 from .config import settings
 
+try:
+    from PIL import Image, ImageOps
+except ImportError:                       # pragma: no cover - 缺 Pillow 时的降级
+    Image = ImageOps = None
+
+log = logging.getLogger("mathmate.llm")
+
+# 网关对单张图片有 1 MiB 硬限制(超出直接 400 "Image input is too large")。
+# 留出余量,并且**必须在发送前压**:手机拍的作业照普遍 5–10 MB。
+IMAGE_BUDGET = 900 * 1024
+# 实测 2400px 比 1600px 更快也更准(28s vs 48s,且长题干不被截断);
+# 再往上只是徒增体积,识别质量不再提升。
+MAX_EDGE = 2400
+
 
 class LLMUnavailable(RuntimeError):
     """LLM 不可用或返回无法使用的内容 —— 调用方必须降级,不得向上冒泡成 500。"""
+
+    def __init__(self, message: str, *, hint: str | None = None, status: int | None = None):
+        super().__init__(message)
+        # hint 是给教师看的人话;message 是给日志看的原始细节。
+        # 把网关返回的 JSON 直接甩到界面上,教师除了困惑什么也得不到。
+        self.hint = hint or message
+        self.status = status
 
 
 _client: httpx.Client | None = None
@@ -80,11 +104,44 @@ def _content_of(resp: httpx.Response) -> str:
         raise LLMUnavailable(f"返回结构无法解析: {resp.text[:200]}") from exc
 
 
+def _hint_for(status: int | None, body: str) -> str:
+    """把网关的原始报错翻成教师能据以行动的一句话。
+
+    界面上甩一坨 JSON,教师除了困惑什么也得不到 —— 原始细节留在日志里。
+    """
+    if status is None:
+        return "识别服务连不上（网络或超时），原图已保存，可稍后重试或改用粘贴文本。"
+
+    low = body.lower()
+    # 先看响应体再看状态码:同一个 400 可能是"图太大"也可能是"模型名不对",
+    # 而这两者一个该改照片、一个该改配置。只按状态码给提示会把配置错误
+    # 说成"稍后重试",而重试一万次也不会好。
+    if "too large" in low or "exceeds" in low:
+        return "图片超出识别服务的体积上限。系统已自动压缩仍未通过，请把照片裁到单页再传。"
+    if "model" in low and status in (400, 404, 422):
+        return "模型名或服务地址不对，请检查 MATHMATE_LLM_MODEL / MATHMATE_LLM_BASE_URL。"
+
+    known = {
+        400: "识别服务拒绝了这次请求（参数不合法），请查看服务端日志。重试不会有帮助。",
+        401: "识别服务鉴权失败，请检查 MATHMATE_LLM_API_KEY。",
+        403: "识别服务拒绝访问，请检查密钥权限。",
+        404: "识别服务地址或模型名不对，请检查 MATHMATE_LLM_BASE_URL / MODEL。",
+        413: "图片太大，请把照片裁到单页再传。",
+        429: "识别服务繁忙（限流），请稍后重试。",
+    }
+    if status in known:
+        return known[status]
+    if 400 <= status < 500:
+        return f"识别服务拒绝了这次请求（HTTP {status}），重试不会有帮助，请查看服务端日志。"
+    return f"识别服务暂时不可用（HTTP {status}），原图已保存，可稍后重试。"
+
+
 def chat(messages: list[dict], *, model: str | None = None,
          max_tokens: int = 2048, temperature: float = 0.0) -> str:
     """一次同步对话。失败抛 LLMUnavailable。"""
     if not settings.llm_enabled:
-        raise LLMUnavailable("未配置 LLM(缺少 MATHMATE_LLM_API_KEY 或已显式关闭)")
+        raise LLMUnavailable("未配置 LLM(缺少 MATHMATE_LLM_API_KEY 或已显式关闭)",
+                             hint="未配置识别服务，请填写 MATHMATE_LLM_API_KEY。")
 
     body = {
         "model": model or settings.llm_model,
@@ -99,26 +156,52 @@ def chat(messages: list[dict], *, model: str | None = None,
     }
     url = f"{settings.llm_base_url}/chat/completions"
 
-    last = ""
+    rid = uuid.uuid4().hex[:8]
+    payload = len(json.dumps(body, ensure_ascii=False).encode())
+    log.info("[%s] → %s model=%s 消息%d条 载荷%.1fKB max_tokens=%d",
+             rid, url, body["model"], len(messages), payload / 1024, max_tokens)
+
+    last, last_status, last_body = "", None, ""
     for attempt in range(settings.llm_max_retries + 1):
+        t0 = time.time()
         try:
             resp = _http().post(url, headers=headers, json=body)
         except httpx.HTTPError as exc:
             last = f"{type(exc).__name__}: {exc}"
+            last_status, last_body = None, ""
+            log.warning("[%s] 第%d次 网络失败 %.1fs %s", rid, attempt + 1,
+                        time.time() - t0, last)
         else:
+            dt = time.time() - t0
             if resp.status_code == 200:
                 text = _content_of(resp).strip()
                 if text:
+                    usage = ""
+                    try:
+                        u = resp.json().get("usage") or {}
+                        usage = f" tokens={u.get('prompt_tokens')}→{u.get('completion_tokens')}"
+                    except Exception:
+                        pass
+                    log.info("[%s] ← 200 %.1fs 返回%d字%s", rid, dt, len(text), usage)
                     return text
-                last = "返回内容为空"
+                last, last_status, last_body = "返回内容为空", 200, ""
+                log.warning("[%s] ← 200 但内容为空 %.1fs", rid, dt)
             elif resp.status_code in (408, 409, 425, 429, 500, 502, 503, 504):
-                last = f"HTTP {resp.status_code}"
+                last, last_status, last_body = f"HTTP {resp.status_code}", resp.status_code, resp.text
+                log.warning("[%s] ← %d %.1fs 可重试 %s", rid, resp.status_code, dt,
+                            resp.text[:200])
             else:
-                # 4xx 配置类错误(401 密钥错、404 模型名错)重试没有意义
-                raise LLMUnavailable(f"HTTP {resp.status_code}: {resp.text[:200]}")
+                # 4xx 配置类错误(401 密钥错、404 模型名错、400 图太大)重试没有意义
+                log.error("[%s] ← %d %.1fs 不可重试 %s", rid, resp.status_code, dt,
+                          resp.text[:400])
+                raise LLMUnavailable(f"HTTP {resp.status_code}: {resp.text[:200]}",
+                                     hint=_hint_for(resp.status_code, resp.text),
+                                     status=resp.status_code)
         if attempt < settings.llm_max_retries:
             time.sleep(1.5 * (attempt + 1))
-    raise LLMUnavailable(last or "调用失败")
+    log.error("[%s] 重试%d次后放弃: %s", rid, settings.llm_max_retries + 1, last)
+    raise LLMUnavailable(last or "调用失败",
+                         hint=_hint_for(last_status, last_body), status=last_status)
 
 
 def chat_json(messages: list[dict], *, model: str | None = None,
@@ -164,6 +247,61 @@ _RECOGNIZE_PROMPT = """你是初中数学作业录入助手。图片是一页学
 - 只输出 JSON 数组，不要任何解释文字。"""
 
 
+def prepare_image(blob: bytes, mime: str = "image/jpeg") -> tuple[bytes, str, dict]:
+    """把上传的原图整理成模型能收的样子。返回 (字节, mime, 诊断信息)。
+
+    做两件事,缺一不可:
+
+    1. **压到网关限额内。** 网关单图上限 1 MiB,而手机拍的作业照普遍 5–10 MB,
+       直接发过去是稳定的 400。原图仍按原样留存供教师对照 —— 压缩只针对送给
+       模型的那一份。
+    2. **套用 EXIF 方向。** 手机横拍竖拍靠 EXIF 标记,原始像素常常是躺着的。
+       不套的话教师在浏览器里看到的是正的、模型看到的是歪的,识别质量白白打折。
+    """
+    info: dict[str, Any] = {"src_bytes": len(blob)}
+    if Image is None:                     # 没装 Pillow:只能原样发,并说清后果
+        info["prepared"] = False
+        info["reason"] = "未安装 Pillow"
+        return blob, mime, info
+
+    try:
+        im = Image.open(io.BytesIO(blob))
+        info["src_size"] = f"{im.width}×{im.height}"
+        info["exif_orientation"] = im.getexif().get(274)
+        im = ImageOps.exif_transpose(im) or im
+        im = im.convert("RGB")
+    except Exception as exc:              # 不是图片/损坏:交给模型自己判断
+        info["prepared"] = False
+        info["reason"] = f"{type(exc).__name__}: {exc}"
+        return blob, mime, info
+
+    edge = MAX_EDGE
+    quality = 85
+    out = blob
+    for _ in range(6):
+        work = im.copy()
+        if max(work.size) > edge:
+            work.thumbnail((edge, edge), Image.LANCZOS)
+        buf = io.BytesIO()
+        work.save(buf, "JPEG", quality=quality, optimize=True)
+        out = buf.getvalue()
+        info["out_size"] = f"{work.width}×{work.height}"
+        if len(out) <= IMAGE_BUDGET:
+            break
+        # 先降边长再降画质:作业题的关键是笔画清晰,分辨率比压缩率更值钱
+        if edge > 1400:
+            edge = int(edge * 0.8)
+        else:
+            quality -= 12
+        if quality < 45:
+            break
+
+    info["prepared"] = True
+    info["out_bytes"] = len(out)
+    info["quality"] = quality
+    return out, "image/jpeg", info
+
+
 def recognize_problems(image_bytes: bytes, mime: str = "image/jpeg",
                        max_items: int = 30) -> list[dict]:
     """从作业照片识别题目。返回 [{seq_no, problem_type, stem_text, options, difficulty, has_figure}]。
@@ -171,6 +309,9 @@ def recognize_problems(image_bytes: bytes, mime: str = "image/jpeg",
     识别结果一律以 `review_status="auto"` 落库,必须经教师逐题校对才能发布
     (FR-HW-11)—— 数学题一个符号错就毁掉整道题,模型识别得再好也不例外。
     """
+    image_bytes, mime, prep = prepare_image(image_bytes, mime)
+    log.info("识别预处理 %s", " ".join(f"{k}={v}" for k, v in prep.items()))
+
     b64 = base64.b64encode(image_bytes).decode("ascii")
     data = chat_json([{
         "role": "user",

@@ -21,17 +21,36 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .db import engine
+from .logging_conf import setup as setup_logging
 from .models import Base
 from .realtime import hub
-from .routers import authoring, insight, vote
+from .routers import authoring, insight, students, vote
+
+setup_logging()
 
 APPS_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SHARED_DIR = os.path.join(APPS_DIR, "shared")
 SCREEN_DIR = os.path.join(APPS_DIR, "screen")
 TEACHER_DIR = os.path.join(APPS_DIR, "teacher")
+
+def _migrate_schema() -> None:
+    """轻量迁移:给已有 SQLite 库补上后加的 student_no 列。
+
+    正式 PG 环境走 Alembic;这里只为零配置的 SQLite 演示库兜底,
+    避免模型加了列之后老库报 no such column。
+    """
+    if engine.url.drivername != "sqlite":
+        return
+    with engine.begin() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(students)")}
+        if "student_no" not in cols:
+            conn.exec_driver_sql("ALTER TABLE students ADD COLUMN student_no VARCHAR(32)")
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
+    _migrate_schema()
     yield
 
 
@@ -46,6 +65,7 @@ app.add_middleware(
 app.include_router(vote.router)
 app.include_router(authoring.router)
 app.include_router(insight.router)
+app.include_router(students.router)
 
 
 @app.get("/api/v1/health")
@@ -79,6 +99,6 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-for path, name in ((SCREEN_DIR, "screen"), (TEACHER_DIR, "teacher")):
+for path, name in ((SHARED_DIR, "shared"), (SCREEN_DIR, "screen"), (TEACHER_DIR, "teacher")):
     if os.path.isdir(path):
         app.mount(f"/{name}", StaticFiles(directory=path, html=True), name=name)

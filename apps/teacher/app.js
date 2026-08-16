@@ -1,6 +1,8 @@
 // @ts-check
 /* MathMate 教师控制台:作业录入 / 讲评看板 / 学生与宠物 */
 
+import { petSVG, SPECIES_ZH, SPECIES } from "/shared/pet.js";
+
 const API = "/api/v1";
 const $ = (id) => /** @type {any} */ (document.getElementById(id));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -58,23 +60,7 @@ const math = (s) => !s ? "" : String(s).split(/(\$\$[\s\S]*?\$\$|\$[^$\n]*\$)/g)
   return plain(p);
 }).join("");
 
-/* ---------------- 宠物形象(与大屏同一套) ---------------- */
-function petSVG(species, hue) {
-  const main = `hsl(${hue} 62% 60%)`, dark = `hsl(${hue} 55% 44%)`, light = `hsl(${hue} 70% 72%)`;
-  const face = `<ellipse cx="41" cy="55" rx="5" ry="6" fill="#fff"/><ellipse cx="59" cy="55" rx="5" ry="6" fill="#fff"/>
-    <circle cx="42" cy="56" r="2.6" fill="#1a1d28"/><circle cx="60" cy="56" r="2.6" fill="#1a1d28"/>
-    <path d="M44 67 Q50 72 56 67" stroke="#1a1d28" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
-  let body;
-  switch (species) {
-    case "sphere": body = `<circle cx="50" cy="55" r="34" fill="${main}"/>`; break;
-    case "cone": body = `<ellipse cx="50" cy="80" rx="32" ry="9" fill="${dark}"/><path d="M50 16 L80 80 Q50 89 20 80 Z" fill="${main}"/>`; break;
-    case "cylinder": body = `<path d="M20 32 h60 v46 a30 9 0 0 1 -60 0 Z" fill="${main}"/><ellipse cx="50" cy="32" rx="30" ry="9" fill="${light}"/>`; break;
-    case "prism": body = `<path d="M50 18 L82 37 L82 73 L50 92 L18 73 L18 37 Z" fill="${main}"/><path d="M50 18 L82 37 L50 56 L18 37 Z" fill="${light}" opacity=".7"/>`; break;
-    case "pyramid": body = `<path d="M50 16 L86 82 L50 82 Z" fill="${dark}"/><path d="M50 16 L14 82 L50 82 Z" fill="${main}"/>`; break;
-    default: body = `<path d="M50 14 L84 32 L50 50 L16 32 Z" fill="${light}"/><path d="M16 32 L50 50 L50 88 L16 70 Z" fill="${main}"/><path d="M84 32 L50 50 L50 88 L84 70 Z" fill="${dark}"/>`;
-  }
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">${body}${face}</svg>`;
-}
+/* ---------------- 宠物形象:与大屏共用 /shared/pet.js ---------------- */
 
 /* ---------------- 基础 ---------------- */
 async function api(p, o) {
@@ -432,28 +418,151 @@ async function showNames(pid) {
 
 /* ================================================================ 学生与宠物 */
 $("r-refresh").addEventListener("click", loadRoster);
+$("r-add").addEventListener("click", () => openStudentModal(null));
+$("r-import").addEventListener("click", () => { $("imp-text").value = ""; $("imp-modal").hidden = false; });
+$("stu-cancel").addEventListener("click", () => { $("stu-modal").hidden = true; });
+$("stu-save").addEventListener("click", saveStudent);
+$("imp-cancel").addEventListener("click", () => { $("imp-modal").hidden = true; });
+$("imp-run").addEventListener("click", runImport);
+$("stu-form").hue.addEventListener("input", updateHuePreview);
+$("pet-grid").addEventListener("click", onPetAction);
 
 async function loadRoster() {
-  const d = await api(`/classes/${S.classId}/pets`);
-  $("r-count").textContent = d.count;
-  $("r-energy").textContent = d.avg_energy;
-  $("r-subs").textContent = d.total_submissions;
-  $("r-silent").innerHTML = d.never_submitted.length
-    ? `<div class="banner warn">有 <b>${d.never_submitted.length}</b> 名学生从未提交过选题（座位 ${
-        d.never_submitted.slice(0, 12).map(esc).join("、")}${d.never_submitted.length > 12 ? " …" : ""}）。
+  S.roster = await api(`/classes/${S.classId}/students`);
+  const sts = S.roster.students;
+  $("r-count").textContent = S.roster.count;
+  const totalE = sts.reduce((a, s) => a + (s.pet?.energy || 0), 0);
+  const totalSubs = sts.reduce((a, s) => a + (s.pet?.submissions || 0), 0);
+  $("r-energy").textContent = (totalE / (S.roster.count || 1)).toFixed(1);
+  $("r-subs").textContent = totalSubs;
+  const never = sts.filter((s) => !s.pet || s.pet.submissions === 0).map((s) => s.seat_no);
+  $("r-silent").innerHTML = never.length
+    ? `<div class="banner warn">有 <b>${never.length}</b> 名学生从未提交过选题（座位 ${
+        never.slice(0, 12).map(esc).join("、")}${never.length > 12 ? " …" : ""}）。
         建议私下了解，不要在班级公开。</div>`
     : `<div class="banner ok">全班都参与过选题。</div>`;
 
-  const maxE = Math.max(100, ...d.pets.map((p) => p.energy));
-  $("pet-grid").innerHTML = d.pets.map((p) => `
-    <div class="pet-card ${p.submissions === 0 ? "zero" : ""}">
-      ${petSVG(p.species, p.hue)}
-      <div class="info">
-        <div class="nm">${esc(p.nickname)}</div>
-        <div class="sub">${esc(p.seat_no)} · ${esc(p.name)}</div>
-        <div class="en">Lv.${p.level} · 能量 ${p.energy} · 提交 ${p.submissions} 次</div>
-        <div class="bar-mini"><i style="width:${Math.round(p.energy / maxE * 100)}%"></i></div>
-      </div></div>`).join("");
+  S.maxE = Math.max(100, ...sts.map((s) => s.pet?.energy || 0));
+  $("pet-grid").innerHTML = sts.map(petCard).join("") +
+    `<p class="credit">宠物形象：<a href="https://googlefonts.github.io/noto-emoji-animation/"
+         target="_blank" rel="noopener">Noto Animated Emoji</a>（Google）·
+       <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>`;
+}
+
+function petCard(s) {
+  const p = s.pet || {};
+  const w = S.maxE ? Math.round((p.energy || 0) / S.maxE * 100) : 0;
+  return `<div class="pet-card ${(p.submissions || 0) === 0 ? "zero" : ""}" data-sid="${s.student_id}">
+    ${p.species ? petSVG(p.species, p.hue, { level: p.level }) : ""}
+    <div class="info">
+      <div class="nm">${esc(p.nickname || "—")}</div>
+      <div class="sub">${esc(s.seat_no)} · ${esc(s.name)}${s.student_no ? ` · ${esc(s.student_no)}` : ""}</div>
+      <div class="en">Lv.${p.level ?? 1} · 能量 ${p.energy ?? 0} · 提交 ${p.submissions ?? 0} 次</div>
+      <div class="bar-mini"><i style="width:${w}%"></i></div>
+    </div>
+    <div class="ops">
+      <button class="mini" data-act="edit">编辑</button>
+      <button class="mini danger" data-act="del">删除</button>
+    </div></div>`;
+}
+
+function onPetAction(e) {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const card = e.target.closest(".pet-card");
+  if (!card) return;
+  const sid = card.dataset.sid;
+  if (btn.dataset.act === "edit") {
+    openStudentModal(S.roster.students.find((x) => x.student_id === sid));
+  } else if (btn.dataset.act === "del") {
+    deleteStudent(sid);
+  }
+}
+
+function speciesOptions(selected) {
+  return SPECIES.map((sp) =>
+    `<option value="${sp}" ${sp === selected ? "selected" : ""}>${esc(SPECIES_ZH[sp])}</option>`).join("");
+}
+
+function suggestSeat() {
+  const layout = S.roster?.seat_layout || { rows: 6, cols: 7 };
+  const taken = new Set((S.roster?.students || []).map((s) => s.seat_no));
+  for (let r = 1; r <= layout.rows; r++)
+    for (let c = 1; c <= layout.cols; c++) {
+      const no = String(r).padStart(2, "0") + String(c).padStart(2, "0");
+      if (!taken.has(no)) return no;
+    }
+  return "";
+}
+
+function autoSpecies() {
+  const used = {};
+  (S.roster?.students || []).forEach((s) => { if (s.pet) used[s.pet.species] = (used[s.pet.species] || 0) + 1; });
+  for (const sp of SPECIES) if (!used[sp]) return sp;
+  return SPECIES.reduce((a, b) => (used[a] || 0) <= (used[b] || 0) ? a : b);
+}
+
+function openStudentModal(stu) {
+  $("stu-modal-title").textContent = stu ? "编辑学生" : "新增学生";
+  S.editingStudentId = stu?.student_id || null;
+  const form = $("stu-form");
+  if (!form.species.options.length) form.species.innerHTML = speciesOptions();
+  form.name.value = stu?.name || "";
+  form.seat_no.value = stu?.seat_no || suggestSeat();
+  form.student_no.value = stu?.student_no || "";
+  form.species.value = stu?.pet?.species || autoSpecies();
+  form.nickname.value = stu?.pet?.nickname || "";
+  form.hue.value = stu?.pet?.hue ?? 210;
+  updateHuePreview();
+  $("stu-modal").hidden = false;
+}
+
+function updateHuePreview() {
+  const v = +$("stu-form").hue.value;
+  $("hue-val").textContent = v + "°";
+  $("hue-swatch").style.background = `hsl(${v} 70% 62%)`;
+}
+
+async function saveStudent() {
+  const form = $("stu-form");
+  const body = {
+    name: form.name.value.trim(),
+    seat_no: form.seat_no.value.trim(),
+    student_no: form.student_no.value.trim() || null,
+    species: form.species.value,
+    nickname: form.nickname.value.trim() || null,
+    hue: +form.hue.value,
+  };
+  if (!body.name || !body.seat_no) return toast("姓名和座位号必填", true);
+  try {
+    if (S.editingStudentId)
+      await api(`/students/${S.editingStudentId}`, { method: "PATCH", body: JSON.stringify(body) });
+    else
+      await api(`/classes/${S.classId}/students`, { method: "POST", body: JSON.stringify(body) });
+    $("stu-modal").hidden = true;
+    await loadRoster();
+    toast("已保存");
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteStudent(sid) {
+  const s = S.roster.students.find((x) => x.student_id === sid);
+  if (!confirm(`删除学生「${s?.name}」及其宠物？此操作不可撤销。`)) return;
+  try { await api(`/students/${sid}`, { method: "DELETE" }); await loadRoster(); toast("已删除"); }
+  catch (e) { toast(e.message, true); }
+}
+
+async function runImport() {
+  const text = $("imp-text").value.trim();
+  if (!text) return toast("先粘贴花名册", true);
+  try {
+    const r = await api(`/classes/${S.classId}/students/import`, { method: "POST", body: JSON.stringify({ text }) });
+    $("imp-modal").hidden = true;
+    await loadRoster();
+    if (r.skipped?.length)
+      toast(`已导入 ${r.imported} 人，跳过 ${r.skipped.length} 行（如：${r.skipped[0].reason}）`, true);
+    else toast(`已导入 ${r.imported} 名学生`);
+  } catch (e) { toast(e.message, true); }
 }
 
 boot().catch((e) => { $("editor").innerHTML = `<div class="empty">${esc(e.message)}</div>`; });

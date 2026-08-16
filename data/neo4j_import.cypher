@@ -385,6 +385,8 @@ MATCH (a:KnowledgePoint {id: "tp-03-04"}), (b:KnowledgePoint {id: "tp-05-03"}) M
 MATCH (a:KnowledgePoint {id: "tp-03-04"}), (b:KnowledgePoint {id: "tp-07-02"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
 MATCH (a:KnowledgePoint {id: "tp-04-01"}), (b:KnowledgePoint {id: "tp-04-02"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
 MATCH (a:KnowledgePoint {id: "tp-04-03"}), (b:KnowledgePoint {id: "tp-04-04"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
+MATCH (a:KnowledgePoint {id: "tp-04-05"}), (b:KnowledgePoint {id: "tp-25-04"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
+MATCH (a:KnowledgePoint {id: "tp-04-05"}), (b:KnowledgePoint {id: "tp-34-01"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
 MATCH (a:KnowledgePoint {id: "tp-05-01"}), (b:KnowledgePoint {id: "tp-05-02"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
 MATCH (a:KnowledgePoint {id: "tp-05-02"}), (b:KnowledgePoint {id: "tp-05-03"}) MERGE (a)-[:PREREQUISITE_OF]->(b);
 MATCH (a:KnowledgePoint {id: "tp-05-02"}), (b:KnowledgePoint {id: "tp-21-01"}) MERGE (a)-[:PREREQUISITE_OF]->(b);

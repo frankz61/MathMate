@@ -263,7 +263,7 @@ INSERT INTO kg_nodes (id, layer, code, name, node_type, domain, grade, semester,
 ('68cf7cb6-4798-5adf-bccd-9a6ba1e94013', 'L1', 'mc-50', '三角函数定义边角对应错;坡度写成水平比铅直', 'misconception', NULL, NULL, NULL, 'beishida-2024', NULL, NULL, '易错点:三角函数定义边角对应错;坡度写成水平比铅直。错因:定义与生活术语。纠正:sinA=对边/斜边等需先定对边邻边;坡度 i=铅直:水平', 'published'),
 ('136d8916-d30c-5aa2-931f-e9f2def6d458', 'L1', 'mc-51', '三视图不满足长对正高平齐宽相等;遮挡轮廓虚线漏画', 'misconception', NULL, NULL, NULL, 'beishida-2024', NULL, NULL, '易错点:三视图不满足长对正高平齐宽相等;遮挡轮廓虚线漏画。错因:投影规则。纠正:主俯长对正、主左高平齐、俯左宽相等;看不见的轮廓画虚线', 'published');
 
--- 关系 448 条
+-- 关系 450 条
 INSERT INTO kg_relations (id, kp_id, prerequisite_kp_id, relation_type, weight, source) VALUES
 ('6d562bdd-664e-55c1-af43-dbf1dcd75bd3', '2ba7bb05-4eb2-52c4-910b-85133555d243', '51e183ef-231d-5dad-b8a8-9a0596f54355', 'METHOD_FOR', 1.0, 'l1_seed'),
 ('8232479a-9821-52e8-bb58-cfabfa360948', '2ba7bb05-4eb2-52c4-910b-85133555d243', 'd8268859-05d1-587b-86e6-decd3e7dc9d8', 'METHOD_FOR', 1.0, 'l1_seed'),
@@ -577,6 +577,8 @@ INSERT INTO kg_relations (id, kp_id, prerequisite_kp_id, relation_type, weight, 
 ('cb175849-e38b-59bd-9498-fcdfd62d658b', '72a3aad9-cbc2-553e-a65e-1d48fd5ddf01', '353f68f7-926a-5348-9800-027c9003136a', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
 ('795a1455-5a49-5fb4-a0fa-23f19840c055', 'd09df9e3-95f8-5a33-bde7-a5d19c7c6b49', 'a1a4c925-779b-5128-95c7-4fa0aaf0df12', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
 ('f17094c6-4cf0-5d0a-a9ff-f424ff2ea563', '821496be-25f8-5b30-a5bd-f986f387d512', '9ae73de1-4e69-533c-af0a-3b709d8a15ba', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
+('56aaff56-6a40-5b52-abe2-6ba68e404f1f', '504870e1-9475-55bf-a28e-ecf21f9a7b75', '49c73072-8ec3-5cea-bc8a-00832f4f8ad8', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
+('ec1d8129-7929-55f5-96d2-f9069c461f63', '1ad5cdc7-b193-5eb0-97fc-25310631a079', '49c73072-8ec3-5cea-bc8a-00832f4f8ad8', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
 ('da3a469c-ddc9-5bd3-8db0-d15ba088ba58', '7bd7a9a9-9194-5934-8ded-d38f5167bfac', '871af80c-f17d-531f-aedf-0183ede2e03a', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
 ('4e5886f6-8206-53ed-9fc5-b039c439978b', 'ebe58a08-8a6a-54b0-8c66-d312659dc5f5', '7bd7a9a9-9194-5934-8ded-d38f5167bfac', 'PREREQUISITE_OF', 1.0, 'l1_seed'),
 ('3c248d82-ae5c-52fd-81c1-1d986a1a3fb9', '4ad1e9f8-decf-50a8-926e-bc68fdd27288', '7bd7a9a9-9194-5934-8ded-d38f5167bfac', 'PREREQUISITE_OF', 1.0, 'l1_seed'),

@@ -303,6 +303,121 @@ def test_recognize_wrapped_in_object(monkeypatch):
     assert len(llm.recognize_problems(b"x")) == 1
 
 
+# ---------------------------------------------------------------- 图片预处理
+
+def _photo(w, h, *, orientation=None, quality=95):
+    """造一张接近真实手机作业照的图(大尺寸、噪点让它压不动)。"""
+    from PIL import Image
+    import random
+    rng = random.Random(7)
+    im = Image.new("RGB", (w, h))
+    im.putdata([(rng.randrange(256), rng.randrange(256), rng.randrange(256))
+                for _ in range(w * h)])
+    buf = io.BytesIO()
+    if orientation is not None:
+        exif = Image.Exif()
+        exif[274] = orientation
+        im.save(buf, "JPEG", quality=quality, exif=exif)
+    else:
+        im.save(buf, "JPEG", quality=quality)
+    return buf.getvalue()
+
+
+def test_oversized_photo_is_shrunk_below_gateway_limit():
+    """网关单图上限 1 MiB,手机作业照普遍 5–10 MB —— 必须发送前压。
+
+    这条是那次「7.8MB 作业照识别失败」的回归:当时根本没有预处理,
+    原图直接发出去,稳定吃 400 "Image input is too large"。
+    """
+    blob = _photo(3200, 2400)
+    assert len(blob) > llm.IMAGE_BUDGET          # 前提:样本确实超限
+    out, mime, info = llm.prepare_image(blob, "image/jpeg")
+    assert len(out) <= llm.IMAGE_BUDGET
+    assert mime == "image/jpeg"
+    assert info["prepared"] is True
+    assert info["src_bytes"] == len(blob)
+
+
+def test_exif_orientation_is_applied():
+    """手机横竖拍靠 EXIF 标记,像素常常是躺着的。
+
+    不摆正的话教师在浏览器里看到的是正的、模型看到的是歪的。
+    """
+    blob = _photo(1200, 600, orientation=6)      # 6 = 需顺时针旋转 90°
+    out, _, info = llm.prepare_image(blob, "image/jpeg")
+    assert info["exif_orientation"] == 6
+    w, h = (int(x) for x in info["out_size"].split("×"))
+    assert h > w, "旋转后应变成竖图"
+
+
+def test_small_photo_passes_through_without_damage():
+    blob = _photo(600, 400, quality=90)
+    out, _, info = llm.prepare_image(blob, "image/jpeg")
+    assert info["prepared"] is True
+    assert info["out_size"] == "600×400"          # 没超限就不该缩
+
+
+def test_corrupt_image_degrades_instead_of_raising():
+    """不是图片/损坏时不能炸 —— 上传流程不该被预处理中断。"""
+    out, mime, info = llm.prepare_image(b"this is not an image", "image/jpeg")
+    assert out == b"this is not an image"
+    assert info["prepared"] is False
+    assert "reason" in info
+
+
+def test_failure_gives_teacher_actionable_hint_not_raw_json(client, klass, monkeypatch):
+    """界面上给人话,原始网关 JSON 只进日志。"""
+    def boom(*_a, **_k):
+        raise llm.LLMUnavailable(
+            'HTTP 400: {"error":{"message":"Image input is too large (max 1 MiB)"}}',
+            hint="图片超出识别服务的体积上限。系统已自动压缩仍未通过，请把照片裁到单页再传。",
+            status=400)
+    _enable(monkeypatch, recognize=boom)
+
+    aid = _new_assignment(client, klass, "报错要说人话")
+    body = _upload(client, aid).json()["recognition"]
+    assert body["status"] == "failed"
+    assert "裁到单页" in body["message"]
+    assert "{" not in body["message"]             # 不把 JSON 甩给教师
+    assert "max 1 MiB" in body["detail"]          # 但细节仍可取用
+
+
+def test_hint_mapping_covers_common_gateway_errors():
+    cases = {
+        401: "鉴权", 403: "密钥权限", 404: "地址或模型名",
+        429: "繁忙", 500: "暂时不可用", None: "连不上",
+    }
+    for status, expect in cases.items():
+        assert expect in llm._hint_for(status, "")
+    assert "体积上限" in llm._hint_for(400, "Image input is too large (max 1 MiB)")
+
+
+def test_hint_reads_body_not_just_status():
+    """同一个 400 可能是「图太大」也可能是「模型名不对」——一个该改照片、
+    一个该改配置。这个网关对未知模型名返回的正是 400 而非 404。"""
+    model_err = ("Unable to determine provider for model 'no-such-model-xyz'. "
+                 "Use a provider/model prefix")
+    assert "模型名" in llm._hint_for(400, model_err)
+    assert "重试" not in llm._hint_for(400, model_err)   # 重试永远不会有用
+
+    # 4xx 一律不该建议「稍后重试」,5xx 才该
+    assert "重试不会有帮助" in llm._hint_for(418, "teapot")
+    assert "可稍后重试" in llm._hint_for(503, "")
+
+
+def test_log_filter_redacts_api_key():
+    """兜底:哪天有人顺手 log 了整个 headers,密钥不能落进日志文件。"""
+    import logging
+    from app.logging_conf import _RedactKey
+    rec = logging.LogRecord("t", logging.INFO, __file__, 1,
+                            "headers={'Authorization': 'Bearer sk-078fc5a6f2a31985-89394e-b81bf1e6'}",
+                            (), None)
+    _RedactKey().filter(rec)
+    out = rec.getMessage()
+    assert "sk-078fc5a6f2a31985-89394e-b81bf1e6" not in out
+    assert "sk-078" in out and "…" in out
+
+
 def test_health_never_echoes_full_key(client, monkeypatch):
     monkeypatch.setenv("MATHMATE_LLM_API_KEY", "sk-0123456789abcdef")
     from app.config import Settings
