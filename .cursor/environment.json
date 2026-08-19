@@ -1,0 +1,14 @@
+{
+  "name": "MathMate",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "MathMate API",
+      "command": "cd apps/api && ../../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "description": "MathMate 后端:教师控制台 /teacher/、教室大屏 /screen/、API 文档 /docs,监听 0.0.0.0:8000"
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 8000 }
+  ]
+}
