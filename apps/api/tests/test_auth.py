@@ -317,3 +317,20 @@ def test_websocket_accepts_device_and_teacher(raw, session_id, device_token, tea
     with raw.websocket_connect(f"/ws/vote/{session_id}?access={teacher_token}") as ws:
         ws.send_json({"type": "heartbeat"})
         assert ws.receive_json()["type"] == "heartbeat_ack"
+
+
+def test_screen_self_unpair_and_rebind(raw, th, class_id):
+    def pair():
+        r=raw.post('/api/v1/screens/pairings',headers=th,json={'class_id':class_id})
+        assert r.status_code==201,r.text
+        d=raw.post('/api/v1/screens/pair',json={'code':r.json()['code']})
+        assert d.status_code==200,d.text
+        return {'X-Device-Token':d.json()['device_token']}
+    first, other=pair(),pair()
+    assert raw.post('/api/v1/screens/me/unpair').status_code==401
+    assert raw.post('/api/v1/screens/me/unpair',headers=th).status_code==401
+    assert raw.post('/api/v1/screens/me/unpair',headers=first).status_code==204
+    assert raw.get('/api/v1/screens/me',headers=first).status_code==401
+    assert raw.get('/api/v1/screens/me',headers=other).status_code==200
+    rebound=pair()
+    assert raw.get('/api/v1/screens/me',headers=rebound).status_code==200

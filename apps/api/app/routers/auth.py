@@ -190,6 +190,16 @@ def screen_me(device: ScreenDevice = Depends(current_device), db: Session = Depe
             "class_name": klass.name if klass else "", "name": device.name}
 
 
+@router.post("/screens/me/unpair", status_code=204)
+def unpair_screen(device: ScreenDevice = Depends(current_device), db: Session = Depends(get_db)):
+    """大屏自助解绑当前设备；仅能吊销自己持有的设备令牌。"""
+    db.info["actor"] = (device.id, "大屏自助解绑", device.tenant_id)
+    device.status = "revoked"
+    device.token_hash = None
+    device.pairing_code = None
+    db.commit()
+
+
 @router.get("/screens")
 def list_screens(class_id: str = Query(...), teacher: Teacher = Depends(current_teacher),
                  db: Session = Depends(get_db)):

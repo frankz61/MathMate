@@ -214,11 +214,12 @@ function setNet(online) {
  */
 const DEV = {
   get token() { return localStorage.getItem("mm.device") || ""; },
-  set(t) { localStorage.setItem("mm.device", t); },
-  clear() { localStorage.removeItem("mm.device"); },
+  set(t) { localStorage.setItem("mm.device", t); $("screen-unpair").hidden = false; },
+  clear() { localStorage.removeItem("mm.device"); $("screen-unpair").hidden = true; },
 };
 
 async function api(path, opts) {
+  const token = DEV.token;
   const headers = { "Content-Type": "application/json" };
   if (DEV.token) headers["X-Device-Token"] = DEV.token;
   const r = await fetch(API + path, { ...opts, headers: { ...headers, ...(opts?.headers || {}) } });
@@ -226,7 +227,7 @@ async function api(path, opts) {
     let detail = null;
     try { detail = (await r.json()).detail; } catch { /* 非 JSON 错误体 */ }
     // 令牌被老师吊销、或换了班:回到配对页,而不是反复弹「连不上」
-    if (r.status === 401) { DEV.clear(); showPairing("这块大屏需要重新配对"); }
+    if (r.status === 401 && DEV.token === token) { DEV.clear(); showPairing("这块大屏已解绑，请输入新的配对码"); }
     const err = new Error(detail?.message || `HTTP ${r.status}`);
     // @ts-ignore
     err.status = r.status; err.detail = detail;
@@ -591,7 +592,7 @@ function resetFlow() {
 /* ------------------------------------------------------------------ 补传 */
 let flushing = false;
 async function flushOutbox() {
-  if (flushing) return;
+  if (flushing || !DEV.token || unpairing) return;
   flushing = true;
   try {
     const items = await outboxAll();
@@ -604,6 +605,7 @@ async function flushOutbox() {
         setNet(true);
       } catch (e) {
         // @ts-ignore  4xx 是业务拒绝,重试多少次都一样,丢弃避免堆积
+        if (e.status === 401) break;
         if (e.status && e.status < 500) await outboxDel(it.key);
         else { setNet(false); break; }
       }
@@ -616,8 +618,48 @@ window.addEventListener("offline", () => setNet(false));
 
 /* ------------------------------------------------------------------ 配对 */
 let pairBuf = "";
+let unpairing = false;
+
+$("screen-unpair").addEventListener("click", async () => {
+  if (unpairing || !DEV.token) return;
+  if (!confirm("确定解绑这台大屏并重新绑定班级？请确认当前没有学生正在操作，解绑后需要老师提供新的配对码。")) return;
+  unpairing = true;
+  const button = /** @type {HTMLButtonElement} */ ($("screen-unpair"));
+  button.disabled = true;
+  try {
+    const pending = await outboxAll();
+    if (pending.length || flushing) {
+      alert("还有选题记录正在等待同步，请保持联网并等待同步完成后再重新绑定。");
+      return;
+    }
+    await api("/screens/me/unpair", { method: "POST" });
+    DEV.clear();
+    location.reload();
+  } catch (e) {
+    if (DEV.token) alert("解绑未完成：" + e.message + "。请恢复网络后重试。");
+  } finally {
+    unpairing = false;
+    button.disabled = false;
+  }
+});
+
+// 选题窗口内也检查设备状态，教师远程解绑后无需等待学生再次提交。
+setInterval(async () => {
+  if (!DEV.token || unpairing) return;
+  try { await api("/screens/me"); } catch { /* 401 由 api 返回配对页，断网保留现有状态 */ }
+}, 4000);
 
 function showPairing(msg) {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  try { S.ws?.close(); } catch { /* 已关闭 */ }
+  S.ws = null;
+  resetFlow();
+  S.classId = null; S.className = ""; S.session = null;
+  S.pets = []; S.problems = []; S.submitted.clear();
+  $("cls-name").textContent = "MathMate";
+  $("asg-title").textContent = "等待绑定班级";
+  $("c-done").textContent = "0"; $("c-total").textContent = "0";
+  $("screen-unpair").hidden = true;
   pairBuf = "";
   $("pr-err").textContent = msg || "";
   drawPairPin();
@@ -651,12 +693,19 @@ function drawPairPin(bad = false) {
 async function submitPairing() {
   $("pr-err").textContent = "正在配对…";
   try {
+    const pending = await outboxAll();
+    if (pending.length) {
+      if (!confirm(`有 ${pending.length} 条旧绑定的选题尚未同步。继续配对将放弃这些记录，是否继续？`)) {
+        pairBuf = ""; drawPairPin(); $("pr-err").textContent = "已取消重新配对"; return;
+      }
+    }
     const r = await fetch(API + "/screens/pair", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: pairBuf }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d?.detail?.message || `配对失败（HTTP ${r.status}）`);
+    for (const item of pending) await outboxDel(item.key);
     DEV.set(d.device_token);
     S.classId = d.class_id;
     S.className = d.class_name;
@@ -696,13 +745,14 @@ async function start() {
 }
 
 (async function boot() {
+  $("screen-unpair").hidden = !DEV.token;
   if (!DEV.token) return showPairing();
   try {
     await start();
   } catch (e) {
     // 401 已经在 api() 里转去配对页了,这里只处理网络类故障
     // @ts-ignore
-    if (e?.status === 401) return;
+    if (e?.status === 401 || !DEV.token) return;
     setNet(false);
     showIdle("连不上服务器", String(e?.message || e));
     pollForSession();
