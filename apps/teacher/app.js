@@ -584,7 +584,7 @@ function petCard(s) {
     </div>
     <div class="ops">
       <button class="mini" data-act="edit">编辑</button>
-      <button class="mini danger" data-act="del">删除</button>
+      <button class="mini danger" data-act="del">停用</button>
     </div></div>`;
 }
 
@@ -747,8 +747,8 @@ async function saveStudent() {
 
 async function deleteStudent(sid) {
   const s = S.roster.students.find((x) => x.student_id === sid);
-  if (!confirm(`删除学生「${s?.name}」及其宠物？此操作不可撤销。`)) return;
-  try { await api(`/students/${sid}`, { method: "DELETE" }); await loadRoster(); toast("已删除"); }
+  if (!confirm(`停用学生「${s?.name}」？历史选题和宠物会保留，可在「维护记录」中恢复。该座位暂时保留。`)) return;
+  try { await api(`/students/${sid}`, { method: "DELETE" }); await loadRoster(); toast("已停用，可在维护记录中恢复"); }
   catch (e) { toast(e.message, true); }
 }
 

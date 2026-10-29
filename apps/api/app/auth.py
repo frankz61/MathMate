@@ -191,6 +191,10 @@ def current_teacher(request: Request, db: Session = Depends(get_db)) -> Teacher:
         raise AuthError("UNAUTHENTICATED", "账号不存在或已停用")
     if int(payload.get("ver", -1)) != teacher.token_version:
         raise AuthError("TOKEN_EXPIRED", "账号信息已变更，请重新登录")
+    db.info["actor"] = (teacher.id, teacher.name, teacher.tenant_id)
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and teacher.role == "group_leader":
+        if request.url.path not in {"/api/v1/auth/password"}:
+            raise AuthError("FORBIDDEN", "教研组长仅有查看权限", status=403)
     return teacher
 
 

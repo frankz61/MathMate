@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import os
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -27,6 +28,7 @@ from .models import Base, Teacher, VoteSession
 from .realtime import SCREEN, TEACHER, hub
 from .routers import auth as auth_router
 from .routers import authoring, insight, students, vote, teachers
+from . import audit  # registers transactional audit events
 
 setup_logging()
 
@@ -125,15 +127,24 @@ async def ws_vote(ws: WebSocket, session_id: str) -> None:
         # 握手前拒绝:客户端收到的是 HTTP 403,而不是「连上了又被踢」
         await ws.close(code=1008)
         return
-    await hub.join(session_id, ws, role)
+    def guard():
+        _ws_identity(session_id, ws.query_params.get("token"), ws.query_params.get("access"))
+    await hub.join(session_id, ws, role, guard=guard)
     try:
         while True:
             # 目前上行只用于心跳保活;提交仍走 REST(便于离线 outbox 重试与幂等)
-            msg = await ws.receive_json()
+            try:
+                msg = await asyncio.wait_for(ws.receive_json(), timeout=2)
+            except asyncio.TimeoutError:
+                guard()
+                continue
+            guard()
             if msg.get("type") == "heartbeat":
                 await ws.send_json({"type": "heartbeat_ack"})
     except WebSocketDisconnect:
         pass
+    except HTTPException:
+        await ws.close(code=1008)
     except Exception:
         pass
     finally:

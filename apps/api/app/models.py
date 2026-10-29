@@ -223,6 +223,19 @@ class StudentChoice(Base):
 # 对应 DESIGN.md §3.1 / §10.1。两类主体的威胁模型不同,凭证也不同:
 # 教师是「人在用」,给短期 JWT;大屏是「无人值守的教室设备」,给长效但权限极窄的令牌。
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    actor_id: Mapped[str] = mapped_column(String(36))
+    actor_name: Mapped[str] = mapped_column(String(64))
+    action: Mapped[str] = mapped_column(String(16))
+    object_type: Mapped[str] = mapped_column(String(32))
+    object_id: Mapped[str] = mapped_column(String(36))
+    changes: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Teacher(Base):
     __tablename__ = "teachers"
     __table_args__ = (UniqueConstraint("tenant_id", "username", name="uq_teacher_username"),)

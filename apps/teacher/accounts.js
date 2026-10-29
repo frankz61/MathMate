@@ -1,13 +1,8 @@
+import { api } from './management-api.js';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles={teacher:'教师',group_leader:'教研组长',school_admin:'学校管理员'};
 let items=[],classes=[],editing=null,resetting=null;
-async function api(path,method='GET',body){
- const r=await fetch('/api/v1'+path,{method,headers:{Authorization:'Bearer '+localStorage.getItem('mm.access'),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
- if(r.status===401){location.href='/teacher/';throw Error('请重新登录');}
- if(!r.ok){let d=await r.json();throw Error(typeof d.detail==='string'?d.detail:JSON.stringify(d.detail));}
- return r.status===204?null:r.json();
-}
 function message(s){$('message').textContent=s;}
 async function load(){items=await api('/teachers');$('rows').innerHTML=items.map(t=>`<tr><td>${esc(t.name)}<br><small>${esc(t.username)}</small></td><td>${roles[t.role]}</td><td>${t.status==='active'?'启用':'停用'}</td><td>${t.class_ids.map(id=>esc(classes.find(c=>c.id===id)?.name||id)).join('、')||'未分配'}</td><td><button data-edit="${esc(t.id)}">编辑</button><button data-reset="${esc(t.id)}">重置密码</button></td></tr>`).join('');}
 function edit(t){editing=t?.id||null;const f=$('teacher');f.reset();$('title').textContent=t?'编辑教师':'新增教师';for(const k of ['name','username','role','status'])if(t)f.elements.namedItem(k).value=t[k];$('initial').hidden=!!t;f.elements.namedItem('password').required=!t;$('classes').innerHTML=classes.map(c=>`<label><input type="checkbox" value="${esc(c.id)}" ${t?.class_ids.includes(c.id)?'checked':''}>${esc(c.name)}</label>`).join('');$('editor').hidden=false;$('editor').scrollIntoView({behavior:'smooth'});}

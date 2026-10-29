@@ -1,18 +1,7 @@
+import { api } from './management-api.js';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let items = [], editing = null, editable = false;
-async function api(path, method = 'GET', body, retry = true) {
- const r = await fetch('/api/v1' + path, {method, headers: {'Content-Type':'application/json', Authorization:'Bearer ' + (localStorage.getItem('mm.access') || '')}, ...(body ? {body:JSON.stringify(body)} : {})});
- if (r.status === 401) {
-  if (retry && localStorage.getItem('mm.refresh')) {
-   const renewed = await fetch('/api/v1/auth/refresh', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:localStorage.getItem('mm.refresh')})});
-   if (renewed.ok) {const token = await renewed.json(); localStorage.setItem('mm.access', token.access_token); localStorage.setItem('mm.refresh', token.refresh_token); return api(path, method, body, false);}
-  }
-  location.href = '/teacher/'; throw Error('请重新登录');
- }
- if (!r.ok) {const d = (await r.json()).detail; throw Error(typeof d === 'string' ? d : d?.message || '保存失败，请检查输入后重试');}
- return r.json();
-}
 async function load() {
  items = await api('/classes');
  $('rows').innerHTML = items.length ? items.map(c => `<tr><td>${esc(c.name)}</td><td>${{7:'七年级',8:'八年级',9:'九年级'}[c.grade] || esc(c.grade)}</td><td>${c.size}</td><td>${c.seat_layout.rows} 排 × ${c.seat_layout.cols} 座</td><td>${editable ? `<button data-edit="${esc(c.id)}">编辑</button>` : '只读'}</td></tr>`).join('') : '<tr><td colspan="5">暂无可访问的班级。</td></tr>';

@@ -1,12 +1,12 @@
 """教师管理。"""
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from ..auth import current_teacher, hash_password, verify_password
 from ..db import get_db
-from ..models import Teacher, TeacherClass, Class
+from ..models import Teacher, TeacherClass, Class, AuditLog
 
 router = APIRouter(prefix="/api/v1", tags=["teachers"])
 
@@ -77,13 +77,30 @@ def update(teacher_id: str, body: TeacherIn, admin: Teacher = Depends(administra
     validate(db, admin, body, teacher_id)
     if t.id == admin.id and (body.status != "active" or body.role != "school_admin"):
         raise HTTPException(409, "不能停用自己或移除自己的管理员角色")
+    old_classes = set(db.scalars(select(TeacherClass.class_id).where(TeacherClass.teacher_id == t.id)))
+    if (t.username, t.role, t.status, old_classes) != (body.username, body.role, body.status, set(body.class_ids)):
+        t.token_version += 1
     t.name, t.username, t.role, t.status = body.name.strip(), body.username, body.role, body.status
-    t.token_version += 1
-    db.execute(delete(TeacherClass).where(TeacherClass.teacher_id == t.id))
-    for cid in set(body.class_ids):
+    for link in db.scalars(select(TeacherClass).where(TeacherClass.teacher_id == t.id)):
+        if link.class_id not in set(body.class_ids):
+            db.delete(link)
+    for cid in set(body.class_ids) - old_classes:
         db.add(TeacherClass(teacher_id=t.id, class_id=cid))
     db.commit()
     return output(db, t)
+
+
+@router.get("/management/audit")
+def audit_logs(before: int | None = Query(None, ge=1), limit: int = Query(50, ge=1, le=100),
+               admin: Teacher = Depends(administrator), db: Session = Depends(get_db)):
+    q = select(AuditLog).where(AuditLog.tenant_id == admin.tenant_id)
+    if before:
+        q = q.where(AuditLog.id < before)
+    logs = list(db.scalars(q.order_by(AuditLog.id.desc()).limit(limit + 1)))
+    return {"items": [{"id": r.id, "actor_name": r.actor_name, "action": r.action,
+            "object_type": r.object_type, "object_id": r.object_id, "changes": r.changes,
+            "created_at": r.created_at} for r in logs[:limit]],
+            "next": logs[limit - 1].id if len(logs) > limit else None}
 
 @router.post("/teachers/{teacher_id}/password", status_code=204)
 def reset(teacher_id: str, body: PasswordIn, admin: Teacher = Depends(administrator), db: Session = Depends(get_db)):

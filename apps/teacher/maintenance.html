@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>维护记录 · MathMate</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./accounts.css?v=2"></head><body>
+<a href="/teacher/">← 教师控制台</a> · <a href="/teacher/accounts.html">账号管理</a> · <a href="/teacher/classes.html">班级管理</a><h1>维护记录</h1><p id="message" role="status"></p>
+<section><h2>班级维护</h2><label>选择班级<select id="class"></select></label><h2>已停用学生</h2><p>历史选题、提交记录和宠物仍保留。停用期间座位和学号暂时保留，恢复后重新出现在花名册和大屏。</p><div style="overflow:auto"><table><thead><tr><th>姓名</th><th>学号</th><th>座位</th><th>操作</th></tr></thead><tbody id="students"></tbody></table></div>
+<h2 style="margin-top:24px">教室大屏</h2><p>丢失或不再使用的设备可解绑；解绑后需要重新配对。</p><div style="overflow:auto"><table><thead><tr><th>设备</th><th>状态</th><th>最近在线</th><th>操作</th></tr></thead><tbody id="devices"></tbody></table></div></section>
+<section id="audit" hidden><h2>管理操作日志</h2><p>仅学校管理员可查本校记录。日志从本次功能上线开始记录，不包含密码、令牌。</p><button id="reload">刷新</button><div style="overflow:auto"><table><thead><tr><th>时间</th><th>操作人</th><th>操作 / 对象</th><th>变更</th></tr></thead><tbody id="logs"></tbody></table></div><button id="more" hidden>加载更早记录</button></section>
+<script type="module" src="./maintenance.js"></script></body></html>

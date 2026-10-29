@@ -13,7 +13,7 @@ import random
 import re
 from collections import Counter
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -289,11 +289,11 @@ def patch_class(class_id: str, body: ClassPatch,
 
 @router.get("/classes/{class_id}/students")
 def list_students(class_id: str, teacher: Teacher = Depends(current_teacher),
-                  db=Depends(get_db)):
+                  db=Depends(get_db), status: str = Query("active", pattern="^(active|inactive)$")):
     klass = _get_class(db, class_id, teacher)
     rows = db.execute(
         select(Student, Pet).join(Pet, Pet.student_id == Student.id, isouter=True)
-        .where(Student.class_id == class_id)
+        .where(Student.class_id == class_id, Student.status == status)
         .order_by(Student.seat_no)
     ).all()
     ids = [st.id for st, _ in rows]
@@ -388,7 +388,15 @@ def patch_student(student_id: str, body: StudentPatch,
 def delete_student(student_id: str, teacher: Teacher = Depends(current_teacher),
                    db=Depends(get_db)):
     st = _get_student(db, student_id, teacher)
-    db.delete(st)
+    st.status = "inactive"
+    db.commit()
+
+
+@router.post("/students/{student_id}/restore", status_code=204)
+def restore_student(student_id: str, teacher: Teacher = Depends(current_teacher), db=Depends(get_db)):
+    st = _get_student(db, student_id, teacher)
+    st.status = "active"
+    _fit_layout(_get_class(db, st.class_id, teacher), st.seat_no)
     db.commit()
 
 

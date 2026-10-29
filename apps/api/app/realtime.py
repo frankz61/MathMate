@@ -28,15 +28,19 @@ class Hub:
         # room -> {ws: role}
         self._rooms: dict[str, dict[WebSocket, str]] = defaultdict(dict)
         self._lock = asyncio.Lock()
+        self._guards = {}
 
-    async def join(self, room: str, ws: WebSocket, role: str = TEACHER) -> None:
+    async def join(self, room: str, ws: WebSocket, role: str = TEACHER, guard=None) -> None:
         await ws.accept()
         async with self._lock:
             self._rooms[room][ws] = role
+            if guard:
+                self._guards[ws] = guard
 
     async def leave(self, room: str, ws: WebSocket) -> None:
         async with self._lock:
             self._rooms.get(room, {}).pop(ws, None)
+            self._guards.pop(ws, None)
             if not self._rooms.get(room):
                 self._rooms.pop(room, None)
 
@@ -50,13 +54,21 @@ class Hub:
         dead: list[WebSocket] = []
         for ws in targets:
             try:
+                guard = self._guards.get(ws)
+                if guard:
+                    guard()
                 await ws.send_json(message)
             except Exception:            # 连接已断:大屏断网/刷新是常态,不是异常
+                try:
+                    await ws.close(code=1008)
+                except Exception:
+                    pass
                 dead.append(ws)
         if dead:
             async with self._lock:
                 for ws in dead:
                     self._rooms.get(room, {}).pop(ws, None)
+                    self._guards.pop(ws, None)
 
     def room_size(self, room: str, role: str | None = None) -> int:
         members = self._rooms.get(room, {})
