@@ -26,7 +26,7 @@ from .logging_conf import setup as setup_logging
 from .models import Base, Teacher, VoteSession
 from .realtime import SCREEN, TEACHER, hub
 from .routers import auth as auth_router
-from .routers import authoring, insight, students, vote
+from .routers import authoring, insight, students, vote, teachers
 
 setup_logging()
 
@@ -73,6 +73,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router)
+app.include_router(teachers.router)
 app.include_router(vote.router)
 app.include_router(authoring.router)
 app.include_router(insight.router)
