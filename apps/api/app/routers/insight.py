@@ -11,12 +11,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import current_teacher, require_class, require_reason_detail
 from ..db import get_db
 from ..models import (
-    Pet, PetEnergyEvent, Problem, Student, StudentChoice, StudentSubmission, VoteSession,
+    Pet, PetEnergyEvent, Problem, Student, StudentChoice, StudentSubmission, Teacher,
+    VoteSession,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["insight"])
+# 这两个端点都返回真实姓名与个人归因,是全系统最敏感的读接口。
+router = APIRouter(prefix="/api/v1", tags=["insight"],
+                   dependencies=[Depends(current_teacher)])
 
 REASON_LABEL = {
     "NO_IDEA": "完全没思路", "STUCK_MIDWAY": "中间卡住了", "WRONG_UNKNOWN": "做错不知错在哪",
@@ -26,11 +30,14 @@ REASON_LABEL = {
 
 
 @router.get("/vote-sessions/{session_id}/students")
-def session_students(session_id: str, db: Session = Depends(get_db)):
+def session_students(session_id: str, teacher: Teacher = Depends(current_teacher),
+                     db: Session = Depends(get_db)):
     """按学生列出本次选题明细 —— 谁选了什么、为什么、还是没交。"""
     s = db.get(VoteSession, session_id)
     if not s:
         raise HTTPException(404, {"code": "SESSION_NOT_FOUND", "message": "投票会话不存在"})
+    require_class(db, teacher, s.class_id)
+    require_reason_detail(teacher)
 
     roster = db.execute(
         select(Student, Pet).join(Pet, Pet.student_id == Student.id, isouter=True)
@@ -79,12 +86,14 @@ def session_students(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/classes/{class_id}/pets")
-def class_pets(class_id: str, db: Session = Depends(get_db)):
+def class_pets(class_id: str, teacher: Teacher = Depends(current_teacher),
+               db: Session = Depends(get_db)):
     """宠物花名册。
 
     刻意**不做排名**(FR-PET-06):按座位号排序而非能量降序。
     公开的个人排行榜会变成对倒数学生的公开羞辱,与产品目的相悖。
     """
+    require_class(db, teacher, class_id)
     rows = db.execute(
         select(Student, Pet).join(Pet, Pet.student_id == Student.id)
         .where(Student.class_id == class_id, Student.status == "active")

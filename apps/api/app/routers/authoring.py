@@ -25,15 +25,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import llm
+from ..auth import current_teacher, require_class
 from ..config import settings
 from ..db import get_db
 from ..importer import split_problems
 from ..kg_index import get_index
-from ..models import Assignment, Class, Problem, VoteSession, utcnow
+from ..models import Assignment, Class, Problem, Teacher, VoteSession, utcnow
 
 log = logging.getLogger("mathmate.authoring")
 
-router = APIRouter(prefix="/api/v1", tags=["authoring"])
+# 整个模块都是教师后台:路由级依赖保证没有任何一个端点能匿名进来。
+# 班级边界另行在 _get_assignment 里收口(见下)。
+router = APIRouter(prefix="/api/v1", tags=["authoring"],
+                   dependencies=[Depends(current_teacher)])
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
 ALLOWED_IMAGE = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
@@ -197,10 +201,16 @@ def _assignment_out(db: Session, a: Assignment) -> dict:
     }
 
 
-def _get_assignment(db: Session, aid: str) -> Assignment:
+def _get_assignment(db: Session, aid: str, teacher: Teacher) -> Assignment:
+    """取作业并校验班级边界。
+
+    作业与题目的所有端点都从这里拿对象,所以把「这个老师能不能碰这个班」
+    收口在这一处 —— 分散在十来个 handler 里迟早会漏掉一个。
+    """
     a = db.get(Assignment, aid)
     if not a:
         raise HTTPException(404, {"code": "ASSIGNMENT_NOT_FOUND", "message": "作业不存在"})
+    require_class(db, teacher, a.class_id)
     return a
 
 
@@ -253,7 +263,9 @@ def llm_health():
 # ---------------------------------------------------------------- 作业
 
 @router.get("/assignments")
-def list_assignments(class_id: str, db: Session = Depends(get_db)):
+def list_assignments(class_id: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    require_class(db, teacher, class_id)
     rows = db.scalars(
         select(Assignment).where(Assignment.class_id == class_id)
         .order_by(Assignment.created_at.desc())
@@ -266,7 +278,9 @@ def list_assignments(class_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/assignments", status_code=201)
-def create_assignment(body: AssignmentIn, db: Session = Depends(get_db)):
+def create_assignment(body: AssignmentIn, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    require_class(db, teacher, body.class_id)
     if not db.get(Class, body.class_id):
         raise HTTPException(404, {"code": "CLASS_NOT_FOUND", "message": "班级不存在"})
     a = Assignment(
@@ -280,22 +294,25 @@ def create_assignment(body: AssignmentIn, db: Session = Depends(get_db)):
 
 
 @router.get("/assignments/{aid}")
-def get_assignment(aid: str, db: Session = Depends(get_db)):
-    return _assignment_out(db, _get_assignment(db, aid))
+def get_assignment(aid: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    return _assignment_out(db, _get_assignment(db, aid, teacher))
 
 
 @router.delete("/assignments/{aid}", status_code=204)
-def delete_assignment(aid: str, db: Session = Depends(get_db)):
-    a = _get_assignment(db, aid)
+def delete_assignment(aid: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    a = _get_assignment(db, aid, teacher)
     _guard_published(a)
     db.delete(a)
     db.commit()
 
 
 @router.post("/assignments/{aid}/import-text")
-def import_text(aid: str, body: ImportTextIn, db: Session = Depends(get_db)):
+def import_text(aid: str, body: ImportTextIn, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
     """粘贴整段作业文本 → 自动切题 → 自动挂知识点候选(仍需教师逐题确认)。"""
-    a = _get_assignment(db, aid)
+    a = _get_assignment(db, aid, teacher)
     _guard_published(a)
 
     items = split_problems(body.text)
@@ -328,6 +345,7 @@ def import_text(aid: str, body: ImportTextIn, db: Session = Depends(get_db)):
 @router.post("/assignments/{aid}/images")
 async def upload_image(aid: str, file: UploadFile = File(...),
                        recognize: bool = Form(True), replace: bool = Form(False),
+                       teacher: Teacher = Depends(current_teacher),
                        db: Session = Depends(get_db)):
     """上传作业原图并自动识别题目(FR-HW-04/05)。
 
@@ -337,7 +355,7 @@ async def upload_image(aid: str, file: UploadFile = File(...),
     多页作业逐张上传,默认 `replace=False` 追加;识别出的题目一律
     `review_status="auto"`,不经教师逐题确认无法发布。
     """
-    a = _get_assignment(db, aid)
+    a = _get_assignment(db, aid, teacher)
     _guard_published(a)
 
     ext = os.path.splitext(file.filename or "")[1].lower()
@@ -416,8 +434,9 @@ def _recognize_into(db: Session, a: Assignment, blob: bytes, mime: str,
 
 
 @router.post("/assignments/{aid}/problems", status_code=201)
-def add_problem(aid: str, body: ProblemIn, db: Session = Depends(get_db)):
-    a = _get_assignment(db, aid)
+def add_problem(aid: str, body: ProblemIn, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    a = _get_assignment(db, aid, teacher)
     _guard_published(a)
     nxt = (db.query(Problem).filter(Problem.assignment_id == a.id).count()) + 1
     p = Problem(
@@ -432,11 +451,12 @@ def add_problem(aid: str, body: ProblemIn, db: Session = Depends(get_db)):
 
 
 @router.patch("/problems/{pid}")
-def patch_problem(pid: str, body: ProblemPatch, db: Session = Depends(get_db)):
+def patch_problem(pid: str, body: ProblemPatch, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
     p = db.get(Problem, pid)
     if not p:
         raise HTTPException(404, {"code": "PROBLEM_NOT_FOUND", "message": "题目不存在"})
-    a = _get_assignment(db, p.assignment_id)
+    a = _get_assignment(db, p.assignment_id, teacher)
     _guard_published(a)
 
     touched = False
@@ -473,11 +493,12 @@ def patch_problem(pid: str, body: ProblemPatch, db: Session = Depends(get_db)):
 
 
 @router.delete("/problems/{pid}", status_code=204)
-def delete_problem(pid: str, db: Session = Depends(get_db)):
+def delete_problem(pid: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
     p = db.get(Problem, pid)
     if not p:
         raise HTTPException(404, {"code": "PROBLEM_NOT_FOUND", "message": "题目不存在"})
-    a = _get_assignment(db, p.assignment_id)
+    a = _get_assignment(db, p.assignment_id, teacher)
     _guard_published(a)
     aid = a.id
     db.delete(p)
@@ -498,13 +519,14 @@ def delete_problem(pid: str, db: Session = Depends(get_db)):
 
 
 @router.post("/assignments/{aid}/publish")
-def publish(aid: str, db: Session = Depends(get_db)):
+def publish(aid: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
     """发布到大屏。
 
     未经教师逐题过目的内容不得推给学生 —— 数学题一个符号错误就毁掉整道题,
     这条约束不可妥协(FR-HW-11)。
     """
-    a = _get_assignment(db, aid)
+    a = _get_assignment(db, aid, teacher)
     probs = db.scalars(select(Problem).where(Problem.assignment_id == a.id)).all()
     if not probs:
         raise HTTPException(422, {"code": "NO_PROBLEMS", "message": "作业里还没有题目"})
@@ -531,8 +553,9 @@ def publish(aid: str, db: Session = Depends(get_db)):
 
 
 @router.post("/assignments/{aid}/unpublish")
-def unpublish(aid: str, db: Session = Depends(get_db)):
-    a = _get_assignment(db, aid)
+def unpublish(aid: str, teacher: Teacher = Depends(current_teacher),
+                       db: Session = Depends(get_db)):
+    a = _get_assignment(db, aid, teacher)
     open_session = db.scalar(select(VoteSession).where(
         VoteSession.assignment_id == a.id, VoteSession.status == "open"))
     if open_session:

@@ -19,6 +19,7 @@ import pytest
 _TMP = tempfile.mkdtemp(prefix="mathmate-test-")
 os.environ["MATHMATE_DB_URL"] = f"sqlite:///{os.path.join(_TMP, 'test.db')}"
 
+from conftest import authenticate                  # noqa: E402
 from fastapi.testclient import TestClient          # noqa: E402
 from sqlalchemy import select                      # noqa: E402
 
@@ -35,7 +36,7 @@ def client():
     Base.metadata.drop_all(engine)
     seed(reset=True)
     with TestClient(app) as c:
-        yield c
+        yield authenticate(c)
 
 
 @pytest.fixture()

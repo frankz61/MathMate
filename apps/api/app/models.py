@@ -217,3 +217,63 @@ class StudentChoice(Base):
     source: Mapped[str] = mapped_column(String(16), default="bigscreen")
     client_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ==================================================================== 身份与凭证
+# 对应 DESIGN.md §3.1 / §10.1。两类主体的威胁模型不同,凭证也不同:
+# 教师是「人在用」,给短期 JWT;大屏是「无人值守的教室设备」,给长效但权限极窄的令牌。
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+    __table_args__ = (UniqueConstraint("tenant_id", "username", name="uq_teacher_username"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), default=DEFAULT_TENANT, index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    username: Mapped[str] = mapped_column(String(64), index=True)
+    # scrypt 派生,格式见 auth.hash_password;明文口令任何时候都不落库、不进日志
+    password_hash: Mapped[str] = mapped_column(String(256))
+    # teacher=仅任教班级 / group_leader=本校只读全部班级 / school_admin=组织管理(看不到归因明细)
+    role: Mapped[str] = mapped_column(String(16), default="teacher")
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    # 改密或停用后让已签发的 refresh 立刻作废:token 里带上它,对不上就拒。
+    # 没有这一条,30 天有效期的 refresh 在改密之后依然能换出新的 access。
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TeacherClass(Base):
+    """任教关系 —— 教师的权限边界就是这张表(DESIGN §10.1)。"""
+
+    __tablename__ = "teacher_classes"
+
+    teacher_id: Mapped[str] = mapped_column(
+        ForeignKey("teachers.id", ondelete="CASCADE"), primary_key=True)
+    class_id: Mapped[str] = mapped_column(
+        ForeignKey("classes.id", ondelete="CASCADE"), primary_key=True)
+    subject: Mapped[str] = mapped_column(String(16), default="math", primary_key=True)
+
+
+class ScreenDevice(Base):
+    """教室大屏设备(FR-SYS-04)。
+
+    令牌**存哈希不存明文**:这是本文件唯一一处偏离 DESIGN §3.1 草案 schema 的地方。
+    device_token 长期有效且放在教室里,一旦数据库被读走,明文令牌等于直接可用;
+    存哈希则拿到库也换不回令牌,而按哈希查找同样是一次索引命中,没有代价。
+    """
+
+    __tablename__ = "screen_devices"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), default=DEFAULT_TENANT, index=True)
+    class_id: Mapped[str] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64), default="教室大屏")
+    token_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    # 一次性配对码:教师端生成 → 念给大屏前的人输入 → 换成长效令牌后立即作废
+    pairing_code: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    pairing_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")   # pending / active / revoked
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    app_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

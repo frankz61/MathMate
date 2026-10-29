@@ -7,6 +7,19 @@
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+
+<!-- ==================== 登录 ==================== -->
+<div class="login-gate" id="login-gate" hidden>
+  <form class="login-card" id="login-form" autocomplete="on">
+    <h1>MathMate 教师控制台</h1>
+    <p class="muted">课堂讲评决策系统</p>
+    <label>用户名<input id="lg-user" name="username" autocomplete="username" required></label>
+    <label>密码<input id="lg-pass" name="password" type="password" autocomplete="current-password" required></label>
+    <p class="login-err" id="lg-err"></p>
+    <button type="submit" class="primary" id="lg-submit">登录</button>
+  </form>
+</div>
+
 <header>
   <h1>MathMate 教师控制台</h1>
   <select id="cls" aria-label="班级"></select>
@@ -16,8 +29,27 @@
     <button role="tab" data-tab="roster"  aria-selected="false">学生与宠物</button>
   </nav>
   <span class="sp"></span>
-  <span class="links"><a href="/screen/" target="_blank">大屏 ↗</a><a href="/docs" target="_blank">API ↗</a></span>
+  <span class="links">
+    <button class="linkish" id="pair-screen">配对大屏</button>
+    <a href="/screen/" target="_blank">大屏 ↗</a><a href="/docs" target="_blank">API ↗</a>
+    <span class="who" id="who"></span>
+    <button class="linkish" id="logout">退出</button>
+  </span>
 </header>
+
+<!-- ==================== 大屏配对码 ==================== -->
+<div class="modal" id="pair-modal" hidden>
+  <div class="modal-box">
+    <h3>配对教室大屏</h3>
+    <p class="muted">在大屏上打开 <code>/screen/</code>，输入下面的配对码。</p>
+    <div class="pair-code" id="pair-code">——————</div>
+    <p class="muted" id="pair-hint"></p>
+    <div class="modal-actions">
+      <button type="button" id="pair-close">完成</button>
+      <button type="button" class="primary" id="pair-again">换一个码</button>
+    </div>
+  </div>
+</div>
 
 <!-- ==================== 作业录入 ==================== -->
 <main id="tab-author">
@@ -75,26 +107,32 @@
 
 <!-- 学生新增/编辑 -->
 <div class="modal" id="stu-modal" hidden>
-  <div class="modal-box">
+  <div class="modal-box stu-box" role="dialog" aria-modal="true" aria-labelledby="stu-modal-title">
     <h3 id="stu-modal-title">学生</h3>
-    <form id="stu-form">
+    <form id="stu-form" autocomplete="off">
+      <div class="stu-preview" id="stu-preview"></div>
       <div class="f2">
-        <label>姓名<input name="name" required maxlength="64"></label>
-        <label>座位号<input name="seat_no" required maxlength="8" placeholder="如 0305"></label>
+        <label>姓名<input name="name" required maxlength="64" autocomplete="off"></label>
+        <label>学号<input name="student_no" maxlength="32" placeholder="可选" autocomplete="off"></label>
       </div>
-      <label>学号<input name="student_no" maxlength="32" placeholder="可选"></label>
       <div class="f2">
-        <label>宠物<select name="species"></select></label>
-        <label>昵称<input name="nickname" maxlength="32" placeholder="留空自动生成"></label>
+        <label>排<input name="row" type="number" min="1" max="20" required></label>
+        <label>座<input name="col" type="number" min="1" max="20" required></label>
       </div>
-      <label class="hue">色相
-        <input type="range" name="hue" min="0" max="360" step="1">
-        <span class="swatch" id="hue-swatch"></span><span class="muted" id="hue-val"></span>
-      </label>
+      <p class="seat-hint" id="seat-hint"></p>
+      <input type="hidden" name="species" value="">
+      <div class="species-grid" id="species-grid" role="listbox" aria-label="宠物"></div>
+      <div class="f2">
+        <label>昵称<input name="nickname" maxlength="32" placeholder="留空则按物种自动生成"></label>
+        <label class="hue">色相
+          <input type="range" name="hue" min="0" max="360" step="1">
+          <span class="swatch" id="hue-swatch"></span><span class="muted" id="hue-val"></span>
+        </label>
+      </div>
     </form>
     <div class="modal-actions">
       <button type="button" id="stu-cancel">取消</button>
-      <button type="button" class="primary" id="stu-save">保存</button>
+      <button type="submit" form="stu-form" class="primary" id="stu-save">保存</button>
     </div>
   </div>
 </div>
@@ -103,7 +141,7 @@
 <div class="modal" id="imp-modal" hidden>
   <div class="modal-box">
     <h3>批量导入学生</h3>
-    <p class="hint">每行一名学生：<code>姓名 座位号 学号</code>，逗号/制表/空格分隔均可；宠物自动分配。</p>
+    <p class="hint">每行一名学生：<code>姓名 座位号 学号</code>，逗号/制表/空格分隔均可。座位号用 4 位（如 <code>0305</code>）或 <code>3-5</code>；宠物自动分配。</p>
     <textarea id="imp-text" rows="10" placeholder="张三 0101 2024001&#10;李四 0102 2024002&#10;王五 0103"></textarea>
     <div class="modal-actions">
       <button type="button" id="imp-cancel">取消</button>

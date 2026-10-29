@@ -2,8 +2,12 @@
 """投票会话:开窗/关窗、大屏 bootstrap、提交、聚合。
 
 对应 docs/DESIGN.md §9.1 与 PRD FR-VOTE-01~13。
-本切片**无鉴权** —— DESIGN §10.1 要求教师 JWT、大屏受限 device_token,
-上线前必须补齐;当前所有端点均可匿名调用。
+
+本模块是**两类主体共用**的唯一一个路由文件,权限边界按 DESIGN §10.1 划:
+
+* 教师(JWT):开窗/关窗、看聚合、下钻名单 —— 一律限于其任教班级;
+* 大屏(device_token):只有 active / bootstrap / submissions 三个端点,
+  且会话必须属于令牌绑定的那个班。**聚合与下钻对大屏一律不开放**。
 """
 from __future__ import annotations
 
@@ -14,12 +18,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import (
+    current_device, current_teacher, require_class, require_device_class,
+    require_reason_detail, teacher_class_ids,
+)
 from ..db import get_db
 from ..models import (
-    Assignment, Class, Pet, PetEnergyEvent, Problem, Student,
-    StudentChoice, StudentSubmission, VoteSession,
+    Assignment, Class, Pet, PetEnergyEvent, Problem, ScreenDevice, Student,
+    StudentChoice, StudentSubmission, Teacher, VoteSession,
 )
-from ..realtime import hub
+from ..realtime import SCREEN, TEACHER, hub
 from ..schemas import (
     BootstrapOut, OpenSessionIn, PetOut, ProblemOut, ProblemTally,
     SessionOut, StudentBrief, SubmissionIn, SubmissionOut, TallyOut,
@@ -102,9 +110,13 @@ def _build_tally(db: Session, session: VoteSession) -> TallyOut:
 # ---------------------------------------------------------------- 教师端
 
 @router.get("/classes")
-def list_classes(db: Session = Depends(get_db)):
+def list_classes(teacher: Teacher = Depends(current_teacher), db: Session = Depends(get_db)):
+    allowed = teacher_class_ids(db, teacher)
+    q = select(Class).where(Class.tenant_id == teacher.tenant_id)
+    if allowed is not None:
+        q = q.where(Class.id.in_(allowed))
     out = []
-    for c in db.scalars(select(Class).order_by(Class.name)).all():
+    for c in db.scalars(q.order_by(Class.name)).all():
         asgs = db.scalars(
             select(Assignment).where(
                 Assignment.class_id == c.id, Assignment.review_status == "published"
@@ -126,8 +138,10 @@ def list_classes(db: Session = Depends(get_db)):
 
 
 @router.post("/vote-sessions", response_model=SessionOut)
-def open_session(body: OpenSessionIn, db: Session = Depends(get_db)):
+def open_session(body: OpenSessionIn, teacher: Teacher = Depends(current_teacher),
+                 db: Session = Depends(get_db)):
     """开启投票窗口(FR-VOTE-01)。同一班级已有开放窗口时直接复用,不重复开窗。"""
+    require_class(db, teacher, body.class_id)
     klass = db.get(Class, body.class_id)
     if not klass:
         raise HTTPException(404, {"code": "CLASS_NOT_FOUND", "message": "班级不存在"})
@@ -155,8 +169,10 @@ def open_session(body: OpenSessionIn, db: Session = Depends(get_db)):
 
 
 @router.post("/vote-sessions/{session_id}/close", response_model=SessionOut)
-async def close_session(session_id: str, db: Session = Depends(get_db)):
+async def close_session(session_id: str, teacher: Teacher = Depends(current_teacher),
+                        db: Session = Depends(get_db)):
     s = _get_session(db, session_id)
+    require_class(db, teacher, s.class_id)
     if s.status == "open":
         s.status = "closed"
         s.closed_at = datetime.now(timezone.utc)
@@ -167,9 +183,12 @@ async def close_session(session_id: str, db: Session = Depends(get_db)):
 
 @router.get("/vote-sessions/{session_id}/problems/{problem_id}/students",
             response_model=list[StudentBrief])
-def drill_down(session_id: str, problem_id: str, db: Session = Depends(get_db)):
+def drill_down(session_id: str, problem_id: str, teacher: Teacher = Depends(current_teacher),
+               db: Session = Depends(get_db)):
     """下钻名单(FR-DEC-04)——**仅教师端**。含真实姓名,大屏不得调用。"""
-    _get_session(db, session_id)
+    s = _get_session(db, session_id)
+    require_class(db, teacher, s.class_id)
+    require_reason_detail(teacher)   # 校管理员不可见归因明细
     rows = db.execute(
         select(StudentChoice, Student)
         .join(Student, Student.id == StudentChoice.student_id)
@@ -186,19 +205,24 @@ def drill_down(session_id: str, problem_id: str, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------- 大屏
 
 @router.get("/vote-sessions/active", response_model=SessionOut | None)
-def active_session(class_id: str = Query(...), db: Session = Depends(get_db)):
+def active_session(class_id: str = Query(...),
+                   device: ScreenDevice = Depends(current_device),
+                   db: Session = Depends(get_db)):
+    require_device_class(device, class_id)
     s = db.scalar(select(VoteSession).where(VoteSession.class_id == class_id, VoteSession.status == "open"))
     return SessionOut.model_validate(s, from_attributes=True) if s else None
 
 
 @router.get("/vote-sessions/{session_id}/bootstrap", response_model=BootstrapOut)
-def bootstrap(session_id: str, db: Session = Depends(get_db)):
+def bootstrap(session_id: str, device: ScreenDevice = Depends(current_device),
+              db: Session = Depends(get_db)):
     """大屏一次性预拉取(NFR-AV-01)。
 
     返回的宠物列表**不含学生姓名** —— 大屏是公开可见的,姓名会让「我不会」
     变成公开信号,产品也就拿不到真实数据了(FR-VOTE-10)。
     """
     s = _get_session(db, session_id)
+    require_device_class(device, s.class_id)
     klass = db.get(Class, s.class_id)
     asg = db.get(Assignment, s.assignment_id)
 
@@ -234,12 +258,15 @@ def bootstrap(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/vote-sessions/{session_id}/submissions", response_model=SubmissionOut)
-async def submit(session_id: str, body: SubmissionIn, db: Session = Depends(get_db)):
+async def submit(session_id: str, body: SubmissionIn,
+                 device: ScreenDevice = Depends(current_device),
+                 db: Session = Depends(get_db)):
     """提交选择。幂等 + 可重投(FR-VOTE-06)。
 
     冲突以 client_ts 大者为准:离线期间的真实先后只有客户端知道。
     """
     s = _get_session(db, session_id)
+    require_device_class(device, s.class_id)
     if s.status != "open":
         raise HTTPException(409, {"code": "SESSION_CLOSED", "message": "投票已结束"})
 
@@ -324,7 +351,16 @@ async def submit(session_id: str, body: SubmissionIn, db: Session = Depends(get_
     db.commit()
 
     tally = _build_tally(db, s)
-    await hub.broadcast(session_id, {"type": "tally_update", "tally": tally.model_dump(mode="json")})
+    # 分流广播:教师端要完整聚合才能决定讲什么;大屏只给「已交多少人」这个进度数字。
+    # 一块任何人都能凑近看的屏幕不该显示「全班 30 人不会第 7 题」(DESIGN §10.1)。
+    await hub.broadcast(
+        session_id, {"type": "tally_update", "tally": tally.model_dump(mode="json")},
+        roles={TEACHER},
+    )
+    await hub.broadcast(session_id, {
+        "type": "progress",
+        "submitted_count": tally.submitted_count, "class_size": tally.class_size,
+    }, roles={SCREEN})
 
     return SubmissionOut(
         status="accepted", session_id=session_id, student_id=body.student_id,
@@ -334,5 +370,9 @@ async def submit(session_id: str, body: SubmissionIn, db: Session = Depends(get_
 
 
 @router.get("/vote-sessions/{session_id}/tally", response_model=TallyOut)
-def tally(session_id: str, db: Session = Depends(get_db)):
-    return _build_tally(db, _get_session(db, session_id))
+def tally(session_id: str, teacher: Teacher = Depends(current_teacher),
+          db: Session = Depends(get_db)):
+    """归因聚合 —— **仅教师端**(DESIGN §10.1:大屏不可读归因聚合)。"""
+    s = _get_session(db, session_id)
+    require_class(db, teacher, s.class_id)
+    return _build_tally(db, s)

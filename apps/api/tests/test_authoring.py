@@ -10,6 +10,7 @@ import pytest
 _TMP = tempfile.mkdtemp(prefix="mathmate-authoring-")
 os.environ.setdefault("MATHMATE_DB_URL", f"sqlite:///{os.path.join(_TMP, 'test.db')}")
 
+from conftest import authenticate                  # noqa: E402
 from fastapi.testclient import TestClient          # noqa: E402
 
 from app.db import engine                          # noqa: E402
@@ -41,7 +42,7 @@ def client():
     Base.metadata.drop_all(engine)
     seed(reset=True)
     with TestClient(app) as c:
-        yield c
+        yield authenticate(c)
 
 
 @pytest.fixture()

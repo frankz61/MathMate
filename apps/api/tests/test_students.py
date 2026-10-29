@@ -10,6 +10,7 @@ import pytest
 _TMP = tempfile.mkdtemp(prefix="mathmate-students-")
 os.environ.setdefault("MATHMATE_DB_URL", f"sqlite:///{os.path.join(_TMP, 'test.db')}")
 
+from conftest import authenticate                  # noqa: E402
 from fastapi.testclient import TestClient          # noqa: E402
 
 from app.db import engine                       # noqa: E402
@@ -23,7 +24,7 @@ def client():
     Base.metadata.drop_all(engine)
     seed(reset=True)
     with TestClient(app) as c:
-        yield c
+        yield authenticate(c)
 
 
 @pytest.fixture()
@@ -50,19 +51,26 @@ def test_list_students_returns_roster(client, cls):
 
 def test_add_student(client, cls):
     r = client.post(f"/api/v1/classes/{cls['id']}/students",
-                    json={"name": "测试生", "seat_no": "9999", "student_no": "2024001"})
+                    json={"name": "测试生", "seat_no": "0606", "student_no": "2024001"})
     assert r.status_code == 201, r.text
     s = r.json()
     assert s["name"] == "测试生"
+    assert s["seat_no"] == "0606"
     assert s["student_no"] == "2024001"
     assert s["pet"]["species"], "新增学生应自动领到一只宠物"
     assert s["pet"]["nickname"], "应自动生成昵称"
 
     # 座位号唯一
     r2 = client.post(f"/api/v1/classes/{cls['id']}/students",
-                     json={"name": "撞座", "seat_no": "9999"})
+                     json={"name": "撞座", "seat_no": "0606"})
     assert r2.status_code == 409
     assert r2.json()["detail"]["code"] == "SEAT_TAKEN"
+
+    # 「3-5」归一成 0305;该座种子数据已占用
+    r3 = client.post(f"/api/v1/classes/{cls['id']}/students",
+                     json={"name": "别名座", "seat_no": "3-5"})
+    assert r3.status_code == 409
+    assert r3.json()["detail"]["code"] == "SEAT_TAKEN"
 
 
 def test_patch_student(client, cls):
@@ -90,7 +98,7 @@ def test_patch_student(client, cls):
 
 def test_delete_student(client, cls):
     r = client.post(f"/api/v1/classes/{cls['id']}/students",
-                    json={"name": "待删", "seat_no": "8888"}).json()
+                    json={"name": "待删", "seat_no": "0607"}).json()
     assert client.delete(f"/api/v1/students/{r['student_id']}").status_code == 204
     # 删除后花名册里不再出现
     d = client.get(f"/api/v1/classes/{cls['id']}/students").json()
@@ -111,6 +119,43 @@ def test_import_students(client, cls):
     assert by_seat["1001"]["name"] == "甲一"
     assert by_seat["1001"]["student_no"] == "A001"
     assert by_seat["1003"]["student_no"] is None
+    assert d["seat_layout"]["rows"] >= 10
+
+
+def test_reject_bad_seat(client, cls):
+    r = client.post(f"/api/v1/classes/{cls['id']}/students",
+                    json={"name": "坏座", "seat_no": "9999"})
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "BAD_SEAT"
+    r2 = client.post(f"/api/v1/classes/{cls['id']}/students",
+                     json={"name": "坏座", "seat_no": "座位"})
+    assert r2.status_code == 422
+
+
+def test_student_no_unique(client, cls):
+    a = client.post(f"/api/v1/classes/{cls['id']}/students",
+                    json={"name": "甲", "seat_no": "0901", "student_no": "NO-A"})
+    assert a.status_code == 201, a.text
+    b = client.post(f"/api/v1/classes/{cls['id']}/students",
+                    json={"name": "乙", "seat_no": "0902", "student_no": "NO-A"})
+    assert b.status_code == 409
+    assert b.json()["detail"]["code"] == "STUDENT_NO_TAKEN"
+    # 改自己的学号保持不变应当成功
+    r = client.patch(f"/api/v1/students/{a.json()['student_id']}", json={
+        "name": "甲", "seat_no": "0901", "student_no": "NO-A",
+        "species": "fox", "nickname": "小狐狸", "hue": 30,
+    })
+    assert r.status_code == 200, r.text
+
+
+def test_layout_expands_and_normalizes_seat(client, cls):
+    r = client.post(f"/api/v1/classes/{cls['id']}/students",
+                    json={"name": "远座", "seat_no": "12-1", "species": "panda"})
+    assert r.status_code == 201, r.text
+    assert r.json()["seat_no"] == "1201"
+    assert r.json()["pet"]["species"] == "panda"
+    d = client.get(f"/api/v1/classes/{cls['id']}/students").json()
+    assert d["seat_layout"]["rows"] >= 12
 
 
 # ---------------------------------------------------------------- 班级与物种

@@ -12,7 +12,6 @@
 import { petSVG } from "/shared/pet.js";
 
 const API = "/api/v1";
-const params = new URLSearchParams(location.search);
 
 /* PRD §3.3.3 —— 归因是产品的核心资产,固定七类,顺序按「教学紧迫度」从高到低 */
 const REASONS = [
@@ -163,7 +162,9 @@ async function outboxDel(key) {
 
 /* ------------------------------------------------------------------ 状态 */
 const S = {
-  classId: params.get("class") || null,
+  // 班级来自 device_token,不再由 URL 参数决定 —— 令牌是唯一权威,
+  // 用 ?class= 指到别的班只会被服务端 403 挡回来。
+  classId: null,
   session: null,
   pets: [],
   problems: [],
@@ -181,9 +182,12 @@ const S = {
   idleTimer: null,
 };
 
-const screens = ["s-garden", "s-confirm", "s-pick", "s-done", "s-idle"];
+const screens = ["s-pair", "s-garden", "s-confirm", "s-pick", "s-done", "s-idle"];
 function show(id) {
   screens.forEach((s) => { $(s).hidden = s !== id; });
+  // 花园在 display:none 时 clientHeight 为 0,缩放系数算不出来。必须等它真正
+  // 可见的这一刻再算 —— renderGarden() 里那次调用发生在 show() 之前,量到的是 0。
+  if (id === "s-garden" && S.pets.length) fitGarden();
   if (id !== "s-garden" && id !== "s-idle") armIdle(); else disarmIdle();
 }
 
@@ -204,14 +208,25 @@ function setNet(online) {
 }
 
 /* ------------------------------------------------------------------ 网络 */
+/* 大屏凭证:长效 device_token(DESIGN §10.1)。
+ * 存 localStorage —— 这台设备本来就是「配对一次,用一学期」,每次开机重配
+ * 会直接让产品在教室里没法用。令牌本身权限极窄,泄露的代价是可控的。
+ */
+const DEV = {
+  get token() { return localStorage.getItem("mm.device") || ""; },
+  set(t) { localStorage.setItem("mm.device", t); },
+  clear() { localStorage.removeItem("mm.device"); },
+};
+
 async function api(path, opts) {
-  const r = await fetch(API + path, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
+  const headers = { "Content-Type": "application/json" };
+  if (DEV.token) headers["X-Device-Token"] = DEV.token;
+  const r = await fetch(API + path, { ...opts, headers: { ...headers, ...(opts?.headers || {}) } });
   if (!r.ok) {
     let detail = null;
     try { detail = (await r.json()).detail; } catch { /* 非 JSON 错误体 */ }
+    // 令牌被老师吊销、或换了班:回到配对页,而不是反复弹「连不上」
+    if (r.status === 401) { DEV.clear(); showPairing("这块大屏需要重新配对"); }
     const err = new Error(detail?.message || `HTTP ${r.status}`);
     // @ts-ignore
     err.status = r.status; err.detail = detail;
@@ -220,11 +235,12 @@ async function api(path, opts) {
   return r.status === 204 ? null : r.json();
 }
 
+/* 班级由令牌决定,大屏不再读班级列表(那是教师端接口) */
 async function resolveClass() {
   if (S.classId) return S.classId;
-  const classes = await api("/classes");
-  if (!classes.length) throw new Error("没有任何班级数据");
-  S.classId = classes[0].id;
+  const me = await api("/screens/me");
+  S.classId = me.class_id;
+  S.className = me.class_name;
   return S.classId;
 }
 
@@ -256,16 +272,18 @@ async function loadSession(session) {
 function connectWS(sessionId) {
   try { S.ws?.close(); } catch { /* 已关闭 */ }
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${proto}://${location.host}/ws/vote/${sessionId}`);
+  // 浏览器的 WebSocket 构造器不能自定义请求头,凭证只能走 query
+  const ws = new WebSocket(
+    `${proto}://${location.host}/ws/vote/${sessionId}?token=${encodeURIComponent(DEV.token)}`);
   S.ws = ws;
   ws.onopen = () => setNet(true);
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
-    if (m.type === "tally_update") {
-      // 别人提交后同步计数;本机 submitted 集合以自己的为准合并
-      const t = m.tally;
-      $("c-done").textContent = String(t.submitted_count);
-      $("c-total").textContent = String(t.class_size);
+    if (m.type === "progress") {
+      // 大屏只收进度数字,不收归因聚合(DESIGN §10.1):
+      // 一块全班都看得见的屏幕不该显示「30 人不会第 7 题」。
+      $("c-done").textContent = String(m.submitted_count);
+      $("c-total").textContent = String(m.class_size);
     } else if (m.type === "session_closed") {
       S.session = null;
       resetFlow();
@@ -278,6 +296,47 @@ function connectWS(sessionId) {
 }
 
 /* ------------------------------------------------------------------ 渲染 */
+
+/* 一格在 --k=1 时的标称尺寸(与 styles.css 里的常量对应)。
+   BORDER 单列出来:2px 描边不参与缩放,6 排就是 24px 的固定开销。 */
+const CELL_W = 108, CELL_H = 117, BORDER = 4, GAP_X = 14, GAP_Y = 10, PAD = 22;
+
+/** 按行列数把整块座位表缩放到一屏之内。
+ *
+ * 大屏离最后一排 5–8 米,一旦出现滚动没人会去滚 —— 第一排的学生只会看到
+ * 半截宠物然后放弃。所以这里宁可把格子缩小,也不允许座位表溢出。
+ * 行列数取「座位表声明值」与「实际座位号」的较大者:seat_layout 可能过期。
+ */
+function fitGarden() {
+  const g = $("garden");
+  let rows = Math.max(1, S.layout.rows || 1);
+  let cols = Math.max(1, S.layout.cols || 1);
+  for (const p of S.pets) {
+    rows = Math.max(rows, parseInt(p.seat_no.slice(0, 2), 10) || 1);
+    cols = Math.max(cols, parseInt(p.seat_no.slice(2), 10) || 1);
+  }
+  const availH = g.clientHeight - PAD * 2;
+  const availW = g.clientWidth - PAD * 2;
+  if (availH <= 0 || availW <= 0) return;           // 还没布局(屏幕隐藏时)
+  const k = Math.min(
+    (availH - rows * BORDER) / (rows * CELL_H + (rows - 1) * GAP_Y),
+    availW / (cols * CELL_W + (cols - 1) * GAP_X),
+    1.6,                                            // 4K 上也不必让宠物大到失真
+  );
+  // 0.5 以下昵称就看不清了;真到那一步宁可让它溢出,由 safe center 保证从顶部开始
+  const clamp = (v) => Math.max(0.5, Math.min(v, 1.6));
+  g.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+  g.style.setProperty("--k", clamp(k).toFixed(3));
+
+  // 上面的常量是估算(行高取整、描边不缩放),会残留几像素。用一次实测把误差收掉 ——
+  // 这样以后调格子样式也不必回来同步常量,顶多多跑一次收敛。
+  const over = g.scrollHeight - g.clientHeight;
+  if (over > 0) {
+    const content = g.scrollHeight - PAD * 2;
+    g.style.setProperty("--k", clamp(k * (availH / content) * 0.998).toFixed(3));
+  }
+}
+
 function renderGarden() {
   const g = $("garden");
   g.style.gridTemplateColumns = `repeat(${S.layout.cols || 7}, auto)`;
@@ -300,6 +359,16 @@ function renderGarden() {
       `<span class="seat">${esc(p.seat_no)}</span>`;
     g.appendChild(b);
   }
+  fitGarden();
+}
+
+/* 投影切换分辨率、一体机旋转、字体迟到导致的重排,都会改变可用高度。
+   盯容器本身比盯 window.resize 可靠 —— 后者漏掉「窗口没变但布局变了」的情况。
+   fitGarden 只改子元素尺寸,花园自身由 flex 决定,不会自激。 */
+if (typeof ResizeObserver === "function") {
+  new ResizeObserver(() => { if (S.pets.length) fitGarden(); }).observe($("garden"));
+} else {
+  addEventListener("resize", () => { if (S.pets.length) fitGarden(); });
 }
 
 function updateCounter() {
@@ -545,6 +614,62 @@ setInterval(flushOutbox, 15000);
 window.addEventListener("online", () => { setNet(true); flushOutbox(); });
 window.addEventListener("offline", () => setNet(false));
 
+/* ------------------------------------------------------------------ 配对 */
+let pairBuf = "";
+
+function showPairing(msg) {
+  pairBuf = "";
+  $("pr-err").textContent = msg || "";
+  drawPairPin();
+  show("s-pair");
+}
+
+function drawPairPin(bad = false) {
+  for (let i = 0; i < 6; i++) {
+    const el = $("q" + i);
+    el.textContent = pairBuf[i] || "";
+    el.className = bad ? "bad" : (pairBuf[i] ? "filled" : "");
+  }
+}
+
+(function buildPairKeypad() {
+  const k = $("pair-keypad");
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "←"].forEach((d) => {
+    const b = document.createElement("button");
+    b.textContent = d;
+    if (!d) { b.style.visibility = "hidden"; b.disabled = true; }
+    b.addEventListener("click", () => {
+      if (d === "←") pairBuf = pairBuf.slice(0, -1);
+      else if (d && pairBuf.length < 6) pairBuf += d;
+      drawPairPin();
+      if (pairBuf.length === 6) submitPairing();
+    });
+    k.appendChild(b);
+  });
+})();
+
+async function submitPairing() {
+  $("pr-err").textContent = "正在配对…";
+  try {
+    const r = await fetch(API + "/screens/pair", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: pairBuf }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d?.detail?.message || `配对失败（HTTP ${r.status}）`);
+    DEV.set(d.device_token);
+    S.classId = d.class_id;
+    S.className = d.class_name;
+    $("pr-err").textContent = "";
+    $("cls-name").textContent = d.class_name;
+    await start();
+  } catch (e) {
+    drawPairPin(true);
+    $("pr-err").textContent = e.message;
+    setTimeout(() => { pairBuf = ""; drawPairPin(); }, 900);
+  }
+}
+
 /* ------------------------------------------------------------------ 轮询开窗 */
 let pollTimer = null;
 function pollForSession() {
@@ -559,16 +684,25 @@ function pollForSession() {
 }
 
 /* ------------------------------------------------------------------ 启动 */
+async function start() {
+  await resolveClass();
+  $("cls-name").textContent = S.className || "MathMate";
+  const s = await findSession();
+  if (s) await loadSession(s);
+  else {
+    showIdle("现在没有进行中的选题", "等老师在教师端开启「投票窗口」后，这里会自动亮起。");
+    pollForSession();
+  }
+}
+
 (async function boot() {
+  if (!DEV.token) return showPairing();
   try {
-    await resolveClass();
-    const s = await findSession();
-    if (s) await loadSession(s);
-    else {
-      showIdle("现在没有进行中的选题", "等老师在教师端开启「投票窗口」后，这里会自动亮起。");
-      pollForSession();
-    }
+    await start();
   } catch (e) {
+    // 401 已经在 api() 里转去配对页了,这里只处理网络类故障
+    // @ts-ignore
+    if (e?.status === 401) return;
     setNet(false);
     showIdle("连不上服务器", String(e?.message || e));
     pollForSession();

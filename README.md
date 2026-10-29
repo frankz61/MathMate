@@ -65,6 +65,14 @@ cd apps/api && pip install -r requirements.txt && python -m app.seed && python -
 
 教师控制台 http://localhost:8000/teacher/ ｜ 教室大屏 http://localhost:8000/screen/
 
+**首次使用需要两步**（DESIGN §10.1 的鉴权已启用，所有接口都要凭证）：
+
+1. 教师端登录，演示账号 `teacher` / `mathmate`（由 `python -m app.seed` 生成，仅供本地演示，部署前务必改掉）；
+2. 教师端点「配对大屏」拿一个 6 位配对码，在大屏上输入 —— 大屏换到一个长效
+   `device_token`，之后开机即用。令牌只绑定这一个班，且**读不到学生姓名与归因聚合**。
+
+对已经跑过的旧库，直接再执行一次 `python -m app.seed` 即可补出账号，不会动学生数据。
+
 VS Code / Cursor 里按 **F5** 一键启动调试，配置见 [.vscode/launch.json](.vscode/launch.json)。
 
 - **作业录入**：拍作业照片直接识别（多模态模型读出题干、公式转 LaTeX、拆选项、估难度），或粘贴文本按题号切分；自动挂知识点候选后，教师逐题校对才能发布

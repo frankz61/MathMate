@@ -63,10 +63,58 @@ const math = (s) => !s ? "" : String(s).split(/(\$\$[\s\S]*?\$\$|\$[^$\n]*\$)/g)
 /* ---------------- 宠物形象:与大屏共用 /shared/pet.js ---------------- */
 
 /* ---------------- 基础 ---------------- */
-async function api(p, o) {
-  const r = await fetch(API + p, { headers: o?.body instanceof FormData ? {} : { "Content-Type": "application/json" }, ...o });
-  if (!r.ok) { let d = null; try { d = (await r.json()).detail; } catch {}
-                const e = new Error(d?.message || `HTTP ${r.status}`); /** @type{any} */(e).detail = d; throw e; }
+/* ---------------- 凭证 ----------------
+ * access 2h / refresh 30d(DESIGN §10.1)。放 localStorage 而不是内存:
+ * 教师一节课里会刷新好几次页面,每次都要重登会直接毁掉「课前 5 分钟」这个场景。
+ * 代价是 XSS 能读到令牌 —— 但本控制台不渲染任何第三方内容,且所有插入点都走 esc()。
+ */
+const TOK = {
+  get access() { return localStorage.getItem("mm.access") || ""; },
+  get refresh() { return localStorage.getItem("mm.refresh") || ""; },
+  set(d) {
+    localStorage.setItem("mm.access", d.access_token);
+    if (d.refresh_token) localStorage.setItem("mm.refresh", d.refresh_token);
+  },
+  clear() { localStorage.removeItem("mm.access"); localStorage.removeItem("mm.refresh"); },
+};
+
+let refreshing = null;
+async function tryRefresh() {
+  // 并发请求同时撞上 401 时只续期一次,否则会用同一个 refresh 换出好几套令牌
+  if (!TOK.refresh) return false;
+  refreshing ??= (async () => {
+    try {
+      const r = await fetch(API + "/auth/refresh", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: TOK.refresh }),
+      });
+      if (!r.ok) return false;
+      TOK.set(await r.json());
+      return true;
+    } finally { setTimeout(() => { refreshing = null; }, 0); }
+  })();
+  return refreshing;
+}
+
+async function api(p, o, _retried) {
+  const base = o?.body instanceof FormData ? {} : { "Content-Type": "application/json" };
+  if (TOK.access) base.Authorization = `Bearer ${TOK.access}`;
+  const r = await fetch(API + p, { ...o, headers: { ...base, ...(o?.headers || {}) } });
+  if (r.status === 401 && !_retried) {
+    // access 过期是常态(2h),先静默续期;续不出来才把人踢回登录页
+    if (await tryRefresh()) return api(p, o, true);
+    TOK.clear();
+    showLogin("登录已过期，请重新登录");
+    throw new Error("登录已过期");
+  }
+  if (!r.ok) {
+    let d = null; try { d = (await r.json()).detail; } catch { /* 非 JSON */ }
+    const msg = !d ? `HTTP ${r.status}`
+      : typeof d === "string" ? d
+      : Array.isArray(d) ? (d.map((x) => x.msg || x.message).filter(Boolean).join("；") || `HTTP ${r.status}`)
+      : (d.message || `HTTP ${r.status}`);
+    const e = new Error(msg); /** @type{any} */(e).detail = d; throw e;
+  }
   return r.status === 204 ? null : r.json();
 }
 let toastTimer = null;
@@ -92,7 +140,62 @@ function setTab(name) {
 }
 
 /* ---------------- 启动 ---------------- */
+/* ---------------- 登录 ---------------- */
+function showLogin(msg) {
+  $("lg-err").textContent = msg || "";
+  $("login-gate").hidden = false;
+  $("lg-user").focus();
+}
+
+$("login-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = $("lg-submit");
+  btn.disabled = true;
+  $("lg-err").textContent = "";
+  try {
+    const r = await fetch(API + "/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("lg-user").value.trim(), password: $("lg-pass").value }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d?.detail?.message || `登录失败（HTTP ${r.status}）`);
+    TOK.set(d);
+    $("lg-pass").value = "";
+    $("login-gate").hidden = true;
+    await boot();
+  } catch (e) {
+    $("lg-err").textContent = e.message;
+  } finally { btn.disabled = false; }
+});
+
+$("logout").addEventListener("click", () => {
+  TOK.clear();
+  try { S.ws?.close(); } catch { /* 已关闭 */ }
+  location.reload();
+});
+
+/* ---------------- 大屏配对 ---------------- */
+async function newPairingCode() {
+  $("pair-code").textContent = "……";
+  $("pair-hint").textContent = "";
+  try {
+    const d = await api("/screens/pairings", {
+      method: "POST", body: JSON.stringify({ class_id: S.classId }),
+    });
+    $("pair-code").textContent = d.code.replace(/(\d{3})(\d{3})/, "$1 $2");
+    $("pair-hint").textContent = `绑定「${d.class_name}」，${Math.round(d.expires_in / 60)} 分钟内有效，只能用一次。`;
+  } catch (e) {
+    $("pair-code").textContent = "——";
+    $("pair-hint").textContent = e.message;
+  }
+}
+$("pair-screen").addEventListener("click", () => { $("pair-modal").hidden = false; newPairingCode(); });
+$("pair-again").addEventListener("click", newPairingCode);
+$("pair-close").addEventListener("click", () => { $("pair-modal").hidden = true; });
+
 async function boot() {
+  const me = await api("/auth/me");
+  $("who").textContent = me.name;
   S.classes = await api("/classes");
   if (!S.classes.length) { $("editor").innerHTML = '<div class="empty">还没有班级数据</div>'; return; }
   $("cls").innerHTML = S.classes.map((c) => `<option value="${c.id}">${esc(c.name)}（${c.size} 人）</option>`).join("");
@@ -364,7 +467,9 @@ function attach(id) {
   $("open").disabled = true; $("close").disabled = false;
   refreshTally();
   try { S.ws?.close(); } catch {}
-  S.ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/vote/${id}`);
+  // WebSocket 构造器不能自定义请求头,凭证只能走 query(见 main.py 的 _ws_identity)
+  S.ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`
+                       + `/ws/vote/${id}?access=${encodeURIComponent(TOK.access)}`);
   S.ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.type === "tally_update") renderTally(m.tally);
@@ -420,12 +525,24 @@ async function showNames(pid) {
 $("r-refresh").addEventListener("click", loadRoster);
 $("r-add").addEventListener("click", () => openStudentModal(null));
 $("r-import").addEventListener("click", () => { $("imp-text").value = ""; $("imp-modal").hidden = false; });
-$("stu-cancel").addEventListener("click", () => { $("stu-modal").hidden = true; });
-$("stu-save").addEventListener("click", saveStudent);
+$("stu-cancel").addEventListener("click", closeStuModal);
+$("stu-form").addEventListener("submit", (e) => { e.preventDefault(); saveStudent(); });
 $("imp-cancel").addEventListener("click", () => { $("imp-modal").hidden = true; });
 $("imp-run").addEventListener("click", runImport);
-$("stu-form").hue.addEventListener("input", updateHuePreview);
+$("stu-form").hue.addEventListener("input", () => syncStuPreview({ alive: false }));
+$("stu-form").row.addEventListener("input", syncStuPreview);
+$("stu-form").col.addEventListener("input", syncStuPreview);
+$("stu-form").nickname.addEventListener("input", syncStuPreview);
+$("stu-form").name.addEventListener("input", syncStuPreview);
+$("species-grid").addEventListener("click", onSpeciesPick);
 $("pet-grid").addEventListener("click", onPetAction);
+$("stu-modal").addEventListener("click", (e) => { if (e.target === $("stu-modal")) closeStuModal(); });
+$("imp-modal").addEventListener("click", (e) => { if (e.target === $("imp-modal")) $("imp-modal").hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("stu-modal").hidden) closeStuModal();
+  else if (!$("imp-modal").hidden) $("imp-modal").hidden = true;
+});
 
 async function loadRoster() {
   S.roster = await api(`/classes/${S.classId}/students`);
@@ -447,13 +564,18 @@ async function loadRoster() {
     `<p class="credit">宠物形象：<a href="https://googlefonts.github.io/noto-emoji-animation/"
          target="_blank" rel="noopener">Noto Animated Emoji</a>（Google）·
        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>`;
+
+  const c = S.classes.find((x) => x.id === S.classId);
+  if (c) c.size = S.roster.count;
+  const opt = [...$("cls").options].find((o) => o.value === S.classId);
+  if (opt && S.roster.name) opt.textContent = `${S.roster.name}（${S.roster.count} 人）`;
 }
 
 function petCard(s) {
   const p = s.pet || {};
   const w = S.maxE ? Math.round((p.energy || 0) / S.maxE * 100) : 0;
   return `<div class="pet-card ${(p.submissions || 0) === 0 ? "zero" : ""}" data-sid="${s.student_id}">
-    ${p.species ? petSVG(p.species, p.hue, { level: p.level }) : ""}
+    <div class="pet-art">${p.species ? petSVG(p.species, p.hue, { level: p.level }) : ""}</div>
     <div class="info">
       <div class="nm">${esc(p.nickname || "—")}</div>
       <div class="sub">${esc(s.seat_no)} · ${esc(s.name)}${s.student_no ? ` · ${esc(s.student_no)}` : ""}</div>
@@ -467,21 +589,17 @@ function petCard(s) {
 }
 
 function onPetAction(e) {
-  const btn = e.target.closest("button[data-act]");
-  if (!btn) return;
   const card = e.target.closest(".pet-card");
   if (!card) return;
   const sid = card.dataset.sid;
-  if (btn.dataset.act === "edit") {
-    openStudentModal(S.roster.students.find((x) => x.student_id === sid));
-  } else if (btn.dataset.act === "del") {
-    deleteStudent(sid);
-  }
+  if (e.target.closest("button[data-act=del]")) { deleteStudent(sid); return; }
+  const stu = S.roster.students.find((x) => x.student_id === sid);
+  if (stu) openStudentModal(stu);
 }
 
-function speciesOptions(selected) {
-  return SPECIES.map((sp) =>
-    `<option value="${sp}" ${sp === selected ? "selected" : ""}>${esc(SPECIES_ZH[sp])}</option>`).join("");
+function defaultNick(sp) {
+  const zh = SPECIES_ZH[sp] || sp;
+  return zh.startsWith("小") ? zh : "小" + zh;
 }
 
 function suggestSeat() {
@@ -502,47 +620,129 @@ function autoSpecies() {
   return SPECIES.reduce((a, b) => (used[a] || 0) <= (used[b] || 0) ? a : b);
 }
 
+function seatNoFromForm() {
+  const row = +$("stu-form").row.value, col = +$("stu-form").col.value;
+  if (!Number.isInteger(row) || !Number.isInteger(col) || row < 1 || col < 1 || row > 20 || col > 20)
+    return "";
+  return String(row).padStart(2, "0") + String(col).padStart(2, "0");
+}
+
+function occupant(seatNo, excludeId) {
+  return (S.roster?.students || []).find((s) => s.seat_no === seatNo && s.student_id !== excludeId);
+}
+
+function closeStuModal() { $("stu-modal").hidden = true; }
+
 function openStudentModal(stu) {
   $("stu-modal-title").textContent = stu ? "编辑学生" : "新增学生";
   S.editingStudentId = stu?.student_id || null;
+  S.previewKey = "";
   const form = $("stu-form");
-  if (!form.species.options.length) form.species.innerHTML = speciesOptions();
   form.name.value = stu?.name || "";
-  form.seat_no.value = stu?.seat_no || suggestSeat();
   form.student_no.value = stu?.student_no || "";
+  const seat = stu?.seat_no || suggestSeat();
+  form.row.value = seat ? String(parseInt(seat.slice(0, 2), 10) || "") : "";
+  form.col.value = seat ? String(parseInt(seat.slice(2), 10) || "") : "";
   form.species.value = stu?.pet?.species || autoSpecies();
   form.nickname.value = stu?.pet?.nickname || "";
   form.hue.value = stu?.pet?.hue ?? 210;
-  updateHuePreview();
+  renderSpeciesGrid(form.species.value);
+  syncStuPreview();
   $("stu-modal").hidden = false;
+  form.name.focus();
 }
 
-function updateHuePreview() {
-  const v = +$("stu-form").hue.value;
-  $("hue-val").textContent = v + "°";
-  $("hue-swatch").style.background = `hsl(${v} 70% 62%)`;
+function renderSpeciesGrid(selected) {
+  const hue = +$("stu-form").hue.value || 210;
+  $("species-grid").innerHTML = SPECIES.map((sp) =>
+    `<button type="button" role="option" aria-selected="${sp === selected}" class="${sp === selected ? "on" : ""}" data-sp="${sp}" title="${esc(SPECIES_ZH[sp])}">${petSVG(sp, hue)}</button>`
+  ).join("");
+}
+
+function onSpeciesPick(e) {
+  const b = e.target.closest("button[data-sp]");
+  if (!b) return;
+  const form = $("stu-form");
+  const old = form.species.value;
+  const nick = form.nickname.value.trim();
+  if (S.editingStudentId && nick && nick === defaultNick(old))
+    form.nickname.value = defaultNick(b.dataset.sp);
+  form.species.value = b.dataset.sp;
+  renderSpeciesGrid(b.dataset.sp);
+  syncStuPreview();
+}
+
+function syncStuPreview(opts = {}) {
+  const form = $("stu-form");
+  const hue = +form.hue.value || 0;
+  const sp = form.species.value || autoSpecies();
+  const nick = form.nickname.value.trim() || defaultNick(sp);
+  $("hue-val").textContent = hue + "°";
+  $("hue-swatch").style.background = `hsl(${hue} 70% 62%)`;
+  const seat = seatNoFromForm();
+  const name = form.name.value.trim() || "未命名";
+  const box = $("stu-preview");
+  const alive = opts.alive !== false;
+  const key = `${sp}|${hue}|${alive ? 1 : 0}`;
+  if (S.previewKey !== key) {
+    S.previewKey = key;
+    box.innerHTML = `${petSVG(sp, hue, { alive })}<div class="meta"><div class="nick"></div><div class="sub"></div></div>`;
+  }
+  box.querySelector(".nick").textContent = nick;
+  box.querySelector(".sub").textContent = name + (seat ? ` · ${seat}` : "");
+  const hint = $("seat-hint");
+  hint.className = "seat-hint";
+  if (!seat) {
+    hint.textContent = "排、座各填 1–20，对应大屏座位表（如 3 排 5 座 → 0305）。";
+    return;
+  }
+  const who = occupant(seat, S.editingStudentId);
+  const layout = S.roster?.seat_layout || { rows: 6, cols: 7 };
+  const row = +form.row.value, col = +form.col.value;
+  if (who) {
+    hint.className = "seat-hint bad";
+    hint.textContent = `座位 ${seat} 已是「${who.name}」。`;
+  } else if (row > (layout.rows || 6) || col > (layout.cols || 7)) {
+    hint.className = "seat-hint warn";
+    hint.textContent = `座位号 ${seat} · 大屏确认码 ${seat.slice(-2)}。超出当前 ${layout.rows}×${layout.cols} 座位表，保存后会自动扩展。`;
+  } else {
+    hint.textContent = `座位号 ${seat} · 学生在大屏点宠物后输入后两位确认（本座是 ${seat.slice(-2)}）。`;
+  }
 }
 
 async function saveStudent() {
   const form = $("stu-form");
+  const btn = $("stu-save");
+  if (btn.disabled) return;
+  const name = form.name.value.trim();
+  const seat_no = seatNoFromForm();
+  if (!name) return toast("姓名必填", true);
+  if (!seat_no) return toast("排/座须为 1–20 的整数", true);
+  const who = occupant(seat_no, S.editingStudentId);
+  if (who) return toast(`座位 ${seat_no} 已是「${who.name}」`, true);
+  const student_no = form.student_no.value.trim() || null;
+  if (student_no) {
+    const dup = (S.roster?.students || []).find(
+      (s) => s.student_no === student_no && s.student_id !== S.editingStudentId);
+    if (dup) return toast(`学号已被「${dup.name}」使用`, true);
+  }
   const body = {
-    name: form.name.value.trim(),
-    seat_no: form.seat_no.value.trim(),
-    student_no: form.student_no.value.trim() || null,
-    species: form.species.value,
+    name, seat_no, student_no,
+    species: form.species.value || autoSpecies(),
     nickname: form.nickname.value.trim() || null,
     hue: +form.hue.value,
   };
-  if (!body.name || !body.seat_no) return toast("姓名和座位号必填", true);
+  btn.disabled = true;
   try {
     if (S.editingStudentId)
       await api(`/students/${S.editingStudentId}`, { method: "PATCH", body: JSON.stringify(body) });
     else
       await api(`/classes/${S.classId}/students`, { method: "POST", body: JSON.stringify(body) });
-    $("stu-modal").hidden = true;
+    closeStuModal();
     await loadRoster();
     toast("已保存");
   } catch (e) { toast(e.message, true); }
+  finally { btn.disabled = false; }
 }
 
 async function deleteStudent(sid) {
@@ -565,4 +765,8 @@ async function runImport() {
   } catch (e) { toast(e.message, true); }
 }
 
-boot().catch((e) => { $("editor").innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+if (!TOK.access && !TOK.refresh) showLogin();
+else boot().catch((e) => {
+  // 令牌还在但 boot 失败:api() 已经处理过 401,走到这里是别的问题
+  $("editor").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+});

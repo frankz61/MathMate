@@ -18,10 +18,16 @@ import sys
 
 from sqlalchemy import select
 
+from .auth import hash_password
 from .db import SessionLocal, engine
 from .models import (
-    Assignment, Base, Class, Pet, Problem, Student, utcnow,
+    DEFAULT_TENANT, Assignment, Base, Class, Pet, Problem, Student, Teacher,
+    TeacherClass, utcnow,
 )
+
+# 演示账号。**仅供本地演示** —— 口令写在仓库里就等于没有口令,
+# 部署到任何能被别人访问的地方之前必须改掉(或直接删掉这个账号)。
+DEMO_TEACHER = {"username": "teacher", "password": "mathmate", "name": "李老师"}
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 DATA = os.path.join(REPO, "data")
@@ -91,6 +97,40 @@ def _pick_problems(rng: random.Random) -> list[dict]:
     return chosen
 
 
+def _ensure_demo_teacher(db) -> None:
+    """建出演示账号,并补齐它对库里所有班级的任教关系。
+
+    幂等,且**账号与任教关系分开判断** —— 班级可能是在账号之后才建出来的
+    (seed 自己就是这个顺序),只看「有没有教师」会留下一个任教 0 个班的账号,
+    登录成功但什么都看不见。
+
+    对已有的演示库直接再跑一次 `python -m app.seed` 是安全的:只补账号,
+    不动任何学生数据。
+    """
+    t = db.scalar(select(Teacher).where(Teacher.username == DEMO_TEACHER["username"]))
+    created = t is None
+    if created:
+        t = Teacher(
+            name=DEMO_TEACHER["name"], username=DEMO_TEACHER["username"],
+            password_hash=hash_password(DEMO_TEACHER["password"]),
+            role="teacher", tenant_id=DEFAULT_TENANT,
+        )
+        db.add(t)
+        db.flush()
+
+    linked = set(db.scalars(
+        select(TeacherClass.class_id).where(TeacherClass.teacher_id == t.id)).all())
+    added = [c for c in db.scalars(select(Class)).all() if c.id not in linked]
+    for klass in added:
+        db.add(TeacherClass(teacher_id=t.id, class_id=klass.id))
+    if created or added:
+        db.commit()
+    if created:
+        print(f"已建演示教师账号:{DEMO_TEACHER['username']} / {DEMO_TEACHER['password']}")
+    if added:
+        print(f"        已挂上 {len(added)} 个班级")
+
+
 def seed(reset: bool = False) -> None:
     if reset:
         Base.metadata.drop_all(engine)
@@ -99,6 +139,9 @@ def seed(reset: bool = False) -> None:
     rng = random.Random(20260815)   # 固定种子:每次生成同一批演示数据,便于复现问题
     db = SessionLocal()
     try:
+        # 先补账号再判断是否跳过 —— 鉴权是后加的,加之前建的库里一个教师都没有,
+        # 不补的话那些演示数据会因为「登录不进去」而整体不可用。
+        _ensure_demo_teacher(db)
         if db.scalar(select(Class).limit(1)) is not None:
             print("已有数据,跳过(需要重建请加 --reset)")
             return
@@ -152,10 +195,15 @@ def seed(reset: bool = False) -> None:
             ))
 
         db.commit()
+        _ensure_demo_teacher(db)
+
         print(f"已生成:{klass.name}({STUDENT_COUNT} 名学生 + 宠物)")
         print(f"        作业「{asg.title}」共 {PROBLEM_COUNT} 题")
         print(f"        class_id={klass.id}")
         print(f"        assignment_id={asg.id}")
+        print()
+        print(f"  教师端登录:{DEMO_TEACHER['username']} / {DEMO_TEACHER['password']}")
+        print("  大屏首次打开需要配对:教师端「班级管理 → 配对大屏」生成 6 位配对码")
     finally:
         db.close()
 

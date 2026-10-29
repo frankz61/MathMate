@@ -79,30 +79,37 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .screen[hidden] { display: none; }
 
+/* --k 是 fitGarden() 按行列数与可用空间算出的缩放系数,让整块座位表**永远一屏放下**。
+   大屏离学生 5–8 米,出现滚动条就等于第一排的人找不到自己的宠物。 */
 .garden {
+  --k: 1;
   flex: 1;
   display: grid;
-  place-content: center;
-  gap: 10px 14px;
+  /* safe:内容万一仍然超高时退化成 start 而不是居中。居中溢出会把上半截推到
+     滚动原点之外 —— 那部分既滚不到也点不着,是真正的「遮挡」。 */
+  place-content: safe center;
+  gap: calc(10px * var(--k)) calc(14px * var(--k));
   padding: 22px;
   overflow: auto;
 }
 .pet-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 4px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: calc(3px * var(--k));
+  /* 左右内边距也缩放,否则 100px 的昵称上限 + 固定 8px 内边距会在小 k 下顶破 min-width */
+  padding: calc(8px * var(--k)) calc(4px * var(--k)) calc(6px * var(--k));
   background: transparent;
   border: 2px solid transparent;
   border-radius: 14px;
-  min-width: 108px;
+  min-width: calc(108px * var(--k));
   transition: background .12s, border-color .12s, transform .12s;
 }
 .pet-cell:hover { background: var(--surface); border-color: var(--line-2); }
 .pet-cell:active { transform: scale(.96); }
-.pet-cell .nick { font-size: 13px; color: var(--ink-2); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pet-cell .seat { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.pet-cell .nick { font-size: calc(13px * var(--k)); line-height: 1.35; color: var(--ink-2); max-width: calc(100px * var(--k)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-cell .seat { font-family: var(--mono); font-size: calc(10px * var(--k)); line-height: 1.35; color: var(--ink-3); }
 .pet-cell.done { opacity: .55; }
 .pet-cell.done .nick { color: var(--good); }
 .pet-art { position: relative; width: 68px; height: 68px; }
+.garden .pet-art { width: calc(68px * var(--k)); height: calc(68px * var(--k)); }
 .pet-art svg { width: 100%; height: 100%; display: block; }
 .star {
   position: absolute; top: -2px; right: -2px;
@@ -143,7 +150,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btn.lg { font-size: 18px; padding: 16px 34px; min-height: 60px; }
 
 /* ---------------- 座位确认 ---------------- */
-.confirm-wrap { flex: 1; display: grid; place-items: center; }
+.confirm-wrap { flex: 1; display: grid; place-items: safe center; overflow-y: auto; padding: 12px 0; }
 .confirm { text-align: center; }
 .confirm .q { font-size: 20px; color: var(--ink-2); margin-bottom: 6px; }
 .confirm .nick-big { font-size: 30px; font-weight: 600; margin-bottom: 20px; }
@@ -165,6 +172,17 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 }
 .keypad button:active { background: var(--surface-2); }
 .confirm .err { color: var(--r-no-idea); font-size: 15px; min-height: 22px; margin-bottom: 10px; }
+
+/* 720p 一体机/投影:舞台净高只剩 ~635px,原尺寸会把「不是我，返回」挤出可视区。
+   键盘按键收到 56px —— 正好是本文件开头约定的触控下限,不再往下压。 */
+@media (max-height: 820px) {
+  .confirm .nick-big { font-size: 26px; margin-bottom: 14px; }
+  .pin { margin-bottom: 16px; }
+  .pin i { width: 54px; height: 62px; font-size: 30px; }
+  .keypad { grid-template-columns: repeat(3, 78px); gap: 10px; }
+  .keypad button { height: 56px; font-size: 23px; }
+  .confirm .err { margin-bottom: 6px; }
+}
 
 /* ---------------- 题目墙 ---------------- */
 .qwall {
@@ -256,7 +274,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .sheet .cancel { margin-top: 16px; }
 
 /* ---------------- 完成 ---------------- */
-.done-wrap { flex: 1; display: grid; place-items: center; text-align: center; }
+.done-wrap { flex: 1; display: grid; place-items: safe center; text-align: center; }
 .done-wrap .pet-art { width: 132px; height: 132px; margin: 0 auto 16px; }
 .done-wrap h2 { margin: 0 0 6px; font-size: 30px; }
 .done-wrap p { margin: 0; color: var(--ink-2); font-size: 17px; }
@@ -269,7 +287,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* ---------------- 空态 ---------------- */
 .empty {
-  flex: 1; display: grid; place-items: center; text-align: center; padding: 40px;
+  flex: 1; display: grid; place-items: safe center; text-align: center; padding: 40px;
 }
 .empty .big { font-size: 26px; margin-bottom: 10px; }
 .empty .small { color: var(--ink-3); font-size: 16px; line-height: 1.7; }
@@ -296,3 +314,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------------- 首次配对 ---------------- */
+.pin.pin6 i { width: 52px; height: 66px; font-size: 30px; }
+@media (max-height: 820px) {
+  .pin.pin6 i { width: 46px; height: 56px; font-size: 26px; }
+}
+.pair-tip { margin: 18px 0 0; color: var(--ink-3); font-size: 14px; }

@@ -10,3 +10,6 @@ apps/api/app/uploads/
 # 密钥只放本地,模板见 .env.example
 .env
 .env.local
+
+# 未设置 MATHMATE_JWT_SECRET 时自动生成的本地开发密钥
+apps/api/.jwt_secret
