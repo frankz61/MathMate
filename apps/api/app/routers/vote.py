@@ -128,6 +128,7 @@ def list_classes(teacher: Teacher = Depends(current_teacher), db: Session = Depe
         out.append({
             "id": c.id, "name": c.name, "grade": c.grade,
             "size": _class_size(db, c.id),
+            "seat_layout": c.seat_layout or {"rows": 6, "cols": 7},
             "assignments": [
                 {"id": a.id, "title": a.title, "assign_date": a.assign_date,
                  "problem_count": len(a.problems)} for a in asgs

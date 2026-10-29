@@ -1,3 +1,8 @@
+import os
+import tempfile
+
+os.environ.setdefault("MATHMATE_DB_URL", "sqlite:///" + os.path.join(tempfile.mkdtemp(prefix="mathmate-teachers-"), "test.db"))
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from app.main import app

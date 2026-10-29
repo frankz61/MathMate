@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>班级管理 · MathMate</title>
+<link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./accounts.css?v=2">
+</head>
+<body>
+<a href="/teacher/">← 教师控制台</a> · <a href="/teacher/accounts.html">账号管理</a>
+<h1>班级管理</h1>
+<p id="message" role="status"></p>
+<section>
+<h2>班级列表</h2>
+<p id="scope">正在加载班级…</p>
+<button class="primary" id="new" hidden>新增班级</button>
+<div style="overflow:auto"><table><thead><tr><th>班级名称</th><th>年级</th><th>学生人数</th><th>座位布局</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section id="editor" hidden>
+<h2 id="title">新增班级</h2>
+<form id="class-form">
+<label>班级名称<input name="name" required maxlength="64" placeholder="例如：初二（3）班"></label>
+<label>年级<select name="grade"><option value="7">七年级</option><option value="8">八年级</option><option value="9">九年级</option></select></label>
+<label>座位排数<input type="number" name="rows" required min="1" max="20" value="6"></label>
+<label>每排座位数<input type="number" name="cols" required min="1" max="20" value="7"></label>
+<p>排数和每排座位数各为 1–20。缩小布局前，请先在「学生与宠物」中调整超出范围的学生座位。</p>
+<p>新建班级后，可在「账号管理」中为其他教师分配该班级。</p>
+<button class="primary" id="save">保存</button><button type="button" id="cancel">取消</button>
+<p id="form-error" role="alert" style="color:var(--danger)"></p>
+</form>
+</section>
+<script type="module" src="./classes.js"></script>
+</body></html>

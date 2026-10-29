@@ -239,7 +239,11 @@ def _commit(db):
 @router.post("/classes", status_code=201)
 def create_class(body: ClassIn, teacher: Teacher = Depends(current_teacher),
                  db=Depends(get_db)):
-    klass = Class(name=body.name, grade=body.grade, tenant_id=teacher.tenant_id,
+    if teacher.role == "group_leader":
+        raise HTTPException(403, "教研组长仅有班级查看权限")
+    if not body.name.strip():
+        raise HTTPException(422, "班级名称不能为空")
+    klass = Class(name=body.name.strip(), grade=body.grade, tenant_id=teacher.tenant_id,
                   seat_layout={"rows": body.rows, "cols": body.cols})
     db.add(klass)
     db.flush()
@@ -254,8 +258,19 @@ def create_class(body: ClassIn, teacher: Teacher = Depends(current_teacher),
 def patch_class(class_id: str, body: ClassPatch,
                 teacher: Teacher = Depends(current_teacher), db=Depends(get_db)):
     klass = _get_class(db, class_id, teacher)
+    if teacher.role == "group_leader":
+        raise HTTPException(403, "教研组长仅有班级查看权限")
+    if body.name is not None and not body.name.strip():
+        raise HTTPException(422, "班级名称不能为空")
+    layout = dict(klass.seat_layout or {"rows": 6, "cols": 7})
+    if body.rows is not None or body.cols is not None:
+        rows = body.rows if body.rows is not None else layout.get("rows", 6)
+        cols = body.cols if body.cols is not None else layout.get("cols", 7)
+        for seat in db.scalars(select(Student.seat_no).where(Student.class_id == class_id)):
+            if int(seat[:2]) > rows or int(seat[2:]) > cols:
+                raise HTTPException(409, "新布局超出现有学生的座位范围，请先调整学生座位")
     if body.name is not None:
-        klass.name = body.name
+        klass.name = body.name.strip()
     if body.grade is not None:
         klass.grade = body.grade
     if body.rows is not None or body.cols is not None:
