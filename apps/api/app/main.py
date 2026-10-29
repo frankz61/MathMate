@@ -34,6 +34,7 @@ APPS_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 SHARED_DIR = os.path.join(APPS_DIR, "shared")
 SCREEN_DIR = os.path.join(APPS_DIR, "screen")
 TEACHER_DIR = os.path.join(APPS_DIR, "teacher")
+PREVIEW_DIR = os.path.join(os.path.dirname(APPS_DIR), "preview")
 
 def _migrate_schema() -> None:
     """轻量迁移:给已有 SQLite 库补上后加的 student_no 列。
@@ -146,6 +147,8 @@ def root() -> RedirectResponse:
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+app.mount("/graph", StaticFiles(directory=PREVIEW_DIR, html=True), name="graph")
 
 for path, name in ((SHARED_DIR, "shared"), (SCREEN_DIR, "screen"), (TEACHER_DIR, "teacher")):
     if os.path.isdir(path):
